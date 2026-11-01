@@ -7,7 +7,8 @@ import { GameSession, type RNote, type SessionResult } from './session';
 import { Renderer, lowerBound } from './renderer';
 import { InputManager } from './input';
 import { background } from './background';
-import { getSettings, keyLabel, subscribeSettings, type Settings } from '../store/settings';
+import { getSettings, keyLabel, subscribeSettings, updateSettings, type Settings } from '../store/settings';
+import { toast } from '../ui/components/toasts';
 import { loadSongBuffer, decoderAlignment } from '../store/songs';
 import { coverCanvas } from '../ui/cover';
 import { laneColorsFor } from './palette';
@@ -112,6 +113,7 @@ export class GameController {
     this.renderer = new Renderer(this.canvas, {
       laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed,
       reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, highContrast: s.colorMode === 'highContrast',
+      perspective: s.highway === '3d',
     });
     this.input = new InputManager(this.container, {
       laneDown: (l, ts) => this.onLaneDown(l, ts),
@@ -154,10 +156,10 @@ export class GameController {
     this.settings = s;
     audio.setVolumes(s.musicVolume, s.sfxVolume);
     setHitSounds(s.hitSounds);
-    if (this.player) this.player.userOffset = s.audioOffsetMs / 1000;
+    if (this.player) this.player.userOffset = s.audioOffsetMs / 1000 + this.syncAdjust;
     if (this.renderer) {
       const colors = laneColorsFor(s.colorMode, this.cfg.meta.theme.colors);
-      this.renderer.setOptions({ laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed, reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles });
+      this.renderer.setOptions({ laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed, reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, perspective: s.highway === '3d' });
       this.renderer.particles.scale = s.particles;
     }
     if (this.input) this.input.applyBindings(s);
@@ -255,6 +257,9 @@ export class GameController {
     const intensity = Math.min(1.4, e * 0.6 + Math.min(1, this.session.combo / 120) * 0.45 + (inDrop ? 0.25 : 0) + this.stage * 0.05);
     background.setIntensity(intensity);
 
+    if (this.settings.autoSync && !this.paused && !this.countdown) this.autoSync();
+    if (this.settings.assistTicks && !this.paused && !this.countdown && !this.finished) this.scheduleTicks(t);
+
     // first visible note
     while (this.firstVisible < this.notes.length && this.isGone(this.notes[this.firstVisible], t)) this.firstVisible++;
 
@@ -265,6 +270,7 @@ export class GameController {
       session: this.session, pressed: [0, 1, 2].map((l) => this.input.isPressed(l) || this.session.isLaneDown(l as Lane)), stage: this.stage,
       songProgress: t / A.duration, intensity, beatPulse, countdown: cd, inputHint: this.inputHint,
       keyLabels: this.inputHint === 'gamepad' ? ['◀ / X', '▼ / A', '▶ / B'] : kl,
+      dirKeyLabels: this.dirLabels(),
       title: this.cfg.meta.title, artist: this.cfg.meta.artist, diffLabel: this.cfg.difficulty.toUpperCase(), diffColor: DIFF_COLORS[this.cfg.difficulty],
       modeLabel: this.cfg.mode === 'classic' ? 'CLASSIC' : `PRACTICE${this.player.rate !== 1 ? ' ' + this.player.rate + '×' : ''}`, cover: this.cover,
       fps: this.fps, showFps: s.showFps, showJudgments: s.showJudgments, showAccuracy: s.showAccuracy, showEarlyLate: s.showEarlyLate, laneFlash: s.laneFlash,
@@ -276,6 +282,73 @@ export class GameController {
     if (this.finishAt && now >= this.finishAt) { this.finishAt = 0; this.emitFinish(false); }
     if (this.failAt && now >= this.failAt) { this.failAt = 0; this.emitFinish(false); }
   };
+
+  /** Live sync correction (s) learned from the player's taps this song. */
+  syncAdjust = 0;
+  private syncFrom = 0;
+  /**
+   * Auto-sync: if the player's taps are consistently early or late against the notes, the device's
+   * audio output delay isn't what the browser reports. Shift the chart to match what they hear.
+   */
+  private autoSync() {
+    const d = this.session.pressDeltas;
+    if (d.length - this.syncFrom < 10) return;
+    const recent = d.slice(this.syncFrom).sort((a, b) => a - b);
+    const med = recent[Math.floor(recent.length / 2)];
+    this.syncFrom = d.length;
+    if (Math.abs(med) < 0.025) return;
+    const step = Math.max(-0.12, Math.min(0.12, med * 0.7));
+    this.syncAdjust += step;
+    this.player.userOffset += step;
+  }
+  get timingNow() { return this.session?.medianDelta(30) ?? null; }
+
+  private ticked = new Set<number>();
+  private tickNodes: AudioScheduledSourceNode[] = [];
+  private tickBuf: AudioBuffer | null = null;
+  /** Assist ticks: a click at every note time, scheduled on the audio clock against the music. */
+  private scheduleTicks(t: number) {
+    const ctx = audio.ctx;
+    if (!ctx || !this.player.playing) return;
+    if (!this.tickBuf) {
+      const b = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.03), ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) { const x = i / ctx.sampleRate; d[i] = Math.sin(2 * Math.PI * 2200 * x) * Math.exp(-x * 160) * 0.9; }
+      this.tickBuf = b;
+    }
+    const times = new Set<number>();
+    for (let i = this.firstVisible; i < this.notes.length; i++) {
+      const n = this.notes[i];
+      if (n.t > t + 0.35) break;
+      if (n.t < t - 0.02 || this.ticked.has(n.id)) continue;
+      this.ticked.add(n.id);
+      if (times.has(n.t)) continue; // one click per chord
+      times.add(n.t);
+      const when = this.player.ctxTimeFor(n.t);
+      if (when < ctx.currentTime) continue;
+      const src = ctx.createBufferSource();
+      src.buffer = this.tickBuf;
+      src.connect(audio.sfxBus);
+      src.start(when);
+      this.tickNodes.push(src);
+      src.onended = () => { this.tickNodes = this.tickNodes.filter((x) => x !== src); src.disconnect(); };
+    }
+  }
+  private stopTicks() {
+    for (const n of this.tickNodes) { try { n.stop(); } catch { /* ignore */ } }
+    this.tickNodes = [];
+    this.ticked.clear();
+  }
+
+  private dirLabelsCache: { keys: unknown; v: Partial<Record<string, string>> } | null = null;
+  private dirLabels() {
+    const k = this.settings.keys;
+    if (this.dirLabelsCache?.keys === k) return this.dirLabelsCache.v;
+    const v: Partial<Record<string, string>> = {};
+    for (const d of ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'] as const) v[d] = keyLabel(k[d][0]);
+    this.dirLabelsCache = { keys: k, v };
+    return v;
+  }
 
   private isGone(n: RNote, t: number) {
     const end = n.t + (n.dur ?? 0);
@@ -326,7 +399,17 @@ export class GameController {
     this.failAt = performance.now() + 2200;
   }
 
+  private persistSync() {
+    if (Math.abs(this.syncAdjust) < 0.005) return;
+    const ms = Math.round(this.syncAdjust * 1000);
+    const s = getSettings();
+    this.syncAdjust = 0;
+    updateSettings({ audioOffsetMs: Math.max(-200, Math.min(300, s.audioOffsetMs + ms)) });
+    toast({ kind: 'info', icon: '🎚️', title: 'Sync auto-adjusted', text: `Notes now arrive ${Math.abs(ms)} ms ${ms > 0 ? 'later' : 'earlier'} to match your audio. Change it any time in Settings → Audio.` });
+  }
+
   private emitFinish(quit: boolean) {
+    this.persistSync();
     const playSeconds = (performance.now() - this.playStartPerf) / 1000;
     this.cb.onFinish({ result: this.session.result(), playSeconds, holdsCompleted: this.holdsCompleted, swipesHit: this.swipesHit, quit });
   }
@@ -336,6 +419,7 @@ export class GameController {
     if (this.finished) return;
     this.paused = true;
     this.countdown = null;
+    this.stopTicks();
     this.player.pause();
     this.input.releaseAll();
     this.cb.onPauseChange(true);
@@ -386,10 +470,12 @@ export class GameController {
   get usedFcBanner() { return this.fcShown; }
 
   destroy() {
+    if (!this.destroyed && this.session) this.persistSync();
     this.destroyed = true;
     const w = window as unknown as { __fsGame?: GameController };
     if (w.__fsGame === this) delete w.__fsGame;
     cancelAnimationFrame(this.raf);
+    this.stopTicks();
     this.input?.detach();
     this.player?.dispose();
     this.resizeObs?.disconnect();

@@ -97,11 +97,16 @@ class Engine {
     if (this.hasTs && typeof ctx.getOutputTimestamp === 'function') {
       try { ts = ctx.getOutputTimestamp(); } catch { ts = null; }
     }
+    const now = performance.now();
+    const fallback = ctx.currentTime - this.outputLatency() - now / 1000;
     if (ts && ts.contextTime && ts.performanceTime && ts.contextTime > 0) {
       measured = ts.contextTime - ts.performanceTime / 1000;
+      // some browsers report timestamps on another time base or with stale values: never trust a
+      // reading that disagrees with the plain clock by more than a plausible output latency
+      if (measured > fallback + 0.02 || measured < fallback - 0.35 || Math.abs(ts.performanceTime - now) > 1000) measured = fallback;
     } else {
       if (ts === null) this.hasTs = false;
-      measured = ctx.currentTime - this.outputLatency() - perfMs / 1000;
+      measured = fallback;
     }
     if (ctx.state !== 'running') {
       this.clockOffset = measured;
@@ -168,6 +173,11 @@ export class MusicPlayer {
     this.src = src;
     this.playing = true;
     audio.resetClock();
+  }
+
+  /** AudioContext time at which the music sample for chart time `songT` is rendered. */
+  ctxTimeFor(songT: number): number {
+    return this.startCtx + (songT + this.align - this.startPos) / this.rate;
   }
 
   /** Current song time as heard by the player. */

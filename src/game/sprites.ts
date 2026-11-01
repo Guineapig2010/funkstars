@@ -91,7 +91,7 @@ export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, 
   const c = canvas(w + pad * 2, h + pad * 2);
   const g = c.getContext('2d')!;
   const x = pad, y = pad;
-  const r = skin === 'pixel' ? h * 0.12 : h / 2;
+  const r = skin === 'pixel' ? h * 0.12 : Math.min(h / 2, w * 0.13);
   // outer glow
   g.save();
   g.shadowColor = rgba(color, 0.95);
@@ -171,7 +171,7 @@ export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, 
     const ROT: Record<string, number> = { up: 0, upright: Math.PI / 4, right: Math.PI / 2, downright: (3 * Math.PI) / 4, down: Math.PI, downleft: (-3 * Math.PI) / 4, left: -Math.PI / 2, upleft: -Math.PI / 4 };
     const rot = ROT[dir ?? 'up'] ?? 0;
     g.rotate(rot);
-    const s = h * 0.62;
+    const s = Math.min(h * 0.62, w * 0.24);
     g.lineJoin = 'round';
     g.lineCap = 'round';
     g.lineWidth = h * 0.18;

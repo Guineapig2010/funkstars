@@ -3,18 +3,20 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "FUNKSTARS — a premium three-lane rhythm game for desktop and mobile browsers",
+  "description": "FUNKSTARS \u2014 a premium three-lane rhythm game for desktop and mobile browsers",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "charts": "tsx scripts/build-songs.ts",
+    "charts": "node scripts/sync-audio.mjs && tsx scripts/build-songs.ts",
     "validate": "tsx scripts/validate-charts.ts",
     "icons": "node scripts/make-icons.mjs",
     "e2e": "node scripts/e2e.mjs",
-    "zip": "node scripts/make-zip.mjs"
+    "zip": "node scripts/make-zip.mjs",
+    "predev": "node scripts/sync-audio.mjs",
+    "prebuild": "node scripts/sync-audio.mjs"
   },
   "dependencies": {
     "@fontsource/bungee": "^5.3.0",

@@ -24,6 +24,8 @@ export interface FrameState {
   countdown: string | null;
   inputHint: 'keyboard' | 'touch' | 'gamepad' | 'mouse';
   keyLabels: string[];
+  /** Keyboard key shown on swipe tiles for each direction. */
+  dirKeyLabels?: Partial<Record<string, string>>;
   title: string;
   artist: string;
   diffLabel: string;
@@ -48,6 +50,8 @@ export interface RenderOptions {
   shake: number;
   particleScale: number;
   highContrast: boolean;
+  /** true = 3D road with perspective; false = flat board with big tiles. */
+  perspective: boolean;
 }
 
 const JCOLORS: Record<Judgment, [string, string]> = {
@@ -112,7 +116,14 @@ export class Renderer {
     this.canvas.height = Math.round(cssH * dpr);
     this.portrait = cssH > cssW * 1.05;
     const mobileLandscape = !this.portrait && cssH < 560;
-    if (this.portrait) {
+    const flat = !this.opts.perspective;
+    if (flat) {
+      // flat board: straight lanes, big full-width tiles, no shrinking with distance
+      if (this.portrait) { this.bw = Math.min(cssW, cssH * 0.62); this.hitY = cssH * 0.82; this.topY = cssH * 0.12; }
+      else if (mobileLandscape) { this.bw = Math.min(cssH * 0.95, cssW * 0.46); this.hitY = cssH * 0.84; this.topY = 0; }
+      else { this.bw = Math.min(cssH * 0.9, cssW * 0.5, 1100); this.hitY = cssH * 0.86; this.topY = 0; }
+      this.topRatio = 1;
+    } else if (this.portrait) {
       this.bw = Math.min(cssW * 0.98, cssH * 0.7);
       this.hitY = cssH * 0.8;
       this.topY = cssH * 0.135;
@@ -129,22 +140,30 @@ export class Renderer {
       this.topRatio = 0.42;
     }
     this.cx = cssW / 2;
-    this.k = 1 / this.topRatio - 1;
-    this.horizonY = (this.topY - this.topRatio * this.hitY) / (1 - this.topRatio);
     this.laneW = this.bw / 3;
-    this.noteW = this.laneW * 0.84;
-    this.noteH = this.laneW * 0.32;
-    // z at the bottom edge of the screen
-    const sBottom = (cssH - this.horizonY) / (this.hitY - this.horizonY);
-    this.zBottom = (1 / sBottom - 1) / this.k;
+    if (flat) {
+      this.k = 0;
+      this.horizonY = this.topY;
+      this.noteW = this.laneW * 0.9;
+      this.noteH = this.laneW * 0.5;
+      this.zBottom = -(cssH - this.hitY) / (this.hitY - this.topY);
+    } else {
+      this.k = 1 / this.topRatio - 1;
+      this.horizonY = (this.topY - this.topRatio * this.hitY) / (1 - this.topRatio);
+      this.noteW = this.laneW * 0.84;
+      this.noteH = this.laneW * 0.32;
+      // z at the bottom edge of the screen
+      const sBottom = (cssH - this.horizonY) / (this.hitY - this.horizonY);
+      this.zBottom = (1 / sBottom - 1) / this.k;
+    }
     this.sprites.clear();
     this.hudGrad = null;
     this.particles.scale = this.opts.particleScale;
   }
 
   // ---------- projection ----------
-  scaleAt(z: number) { return 1 / (1 + z * this.k); }
-  yAt(z: number) { return this.horizonY + (this.hitY - this.horizonY) * this.scaleAt(z); }
+  scaleAt(z: number) { return this.k === 0 ? 1 : 1 / (1 + z * this.k); }
+  yAt(z: number) { return this.k === 0 ? this.hitY - z * (this.hitY - this.topY) : this.horizonY + (this.hitY - this.horizonY) * this.scaleAt(z); }
   /** x of lane-relative offset u (-1 left edge .. 1 right edge). */
   xAt(u: number, z: number) { return this.cx + u * (this.bw / 2) * this.scaleAt(z); }
   laneU(l: number) { return -2 / 3 + l * (2 / 3); }
@@ -379,7 +398,7 @@ export class Renderer {
       const sc = 1 + this.pop[l] * 0.12 + (pressed ? 0.04 : 0);
       const w = this.noteW * sc, h = this.noteH * sc;
       const c = this.opts.laneColors[l];
-      roundRect(g, x - w / 2, this.hitY - h / 2, w, h, h / 2);
+      roundRect(g, x - w / 2, this.hitY - h / 2, w, h, this.k === 0 ? Math.min(h / 2, w * 0.13) : h / 2);
       g.fillStyle = pressed ? rgba(c, 0.42) : 'rgba(255,255,255,0.05)';
       g.fill();
       g.lineWidth = pressed ? 3 : 2;
@@ -448,7 +467,7 @@ export class Renderer {
   private drawHolds(s: FrameState) {
     const g = this.g;
     const end = s.t + this.vis * 1.05;
-    const half = (1 / 3) * 0.42;
+    const half = (1 / 3) * (this.k === 0 ? 0.38 : 0.42);
     for (let i = s.firstVisible; i < s.notes.length; i++) {
       const n = s.notes[i];
       if (n.t > end) break;
@@ -603,10 +622,29 @@ export class Renderer {
       if (n.judged === 'miss') g.filter = 'grayscale(1)';
       g.drawImage(sp.img, x - w / 2 - pad, y - h / 2 - pad, w + pad * 2, h + pad * 2);
       if (n.judged === 'miss') g.filter = 'none';
-      if (size !== 'regular' && !n.judged) {
-        // crisp centre line marks the exact timing point of short tiles
-        g.fillStyle = 'rgba(255,255,255,0.95)';
-        g.fillRect(x - w * 0.36, y - Math.max(1, sc), w * 0.72, Math.max(1.5, 2 * sc));
+      if (n.type !== 'swipe' && !n.judged) {
+        // timing line through the middle of every tile: hit when it crosses the hit line
+        const lt = Math.max(2, Math.min(5, h * 0.07));
+        g.fillStyle = 'rgba(20,6,40,0.55)';
+        g.fillRect(x - w * 0.4, y - lt / 2 - 1, w * 0.8, lt + 2);
+        g.fillStyle = '#ffffff';
+        g.fillRect(x - w * 0.4, y - lt / 2, w * 0.8, lt);
+      }
+      if (n.type === 'swipe' && !n.judged && s.inputHint === 'keyboard' && s.dirKeyLabels) {
+        // print the direction key on the tile: lane key + this key together
+        const label = s.dirKeyLabels[n.dir ?? 'up'];
+        if (label) {
+          const fs = Math.max(11, Math.min(h * 0.3, w * 0.16));
+          const bx = x + w / 2 - fs * 1.35, by = y + h / 2 - fs * 1.2;
+          roundRect(g, bx - fs * 0.75, by - fs * 0.62, fs * 1.5, fs * 1.24, fs * 0.3);
+          g.fillStyle = 'rgba(20,8,48,0.88)';
+          g.fill();
+          g.font = `900 ${fs}px Outfit, system-ui`;
+          g.textAlign = 'center';
+          g.textBaseline = 'middle';
+          g.fillStyle = '#ffffff';
+          g.fillText(label, bx, by + fs * 0.04);
+        }
       }
       if (n.type === 'swipe' && !n.judged) {
         const ph = (this.clock * 2.5) % 1;

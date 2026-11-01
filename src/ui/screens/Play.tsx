@@ -129,6 +129,7 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
             <h2>PAUSED</h2>
             <Btn variant="play" sfx="uiSelect" icon={<Icon name="play" />} onClick={() => gameRef.current?.resume()} autoFocus>Resume</Btn>
             <Btn variant="glass" icon={<Icon name="restart" />} onClick={() => gameRef.current?.restart()}>Restart <kbd>R</kbd></Btn>
+            <TimingNote game={gameRef.current} />
             <div className="pause-quick">
               <Slider label="Note speed" value={s.noteSpeed} min={1} max={10} step={0.5} onChange={(v) => updateSettings({ noteSpeed: v })} />
               <Slider label="Audio offset" value={s.audioOffsetMs} min={-200} max={300} step={1} onChange={(v) => updateSettings({ audioOffsetMs: v })} format={(v) => `${v} ms`} />
@@ -139,6 +140,19 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
         </div>
       )}
     </div>
+  );
+}
+
+function TimingNote({ game }: { game: GameController | null }) {
+  const s = useSettings();
+  const t = game?.timingNow;
+  if (t === null || t === undefined) return null;
+  const ms = Math.round(t * 1000);
+  return (
+    <p className="timing-note">
+      Your taps: {Math.abs(ms) < 15 ? 'on time' : `${Math.abs(ms)} ms ${ms > 0 ? 'late' : 'early'}`}
+      {s.autoSync ? ' · auto-sync is correcting this' : ''}
+    </p>
   );
 }
 

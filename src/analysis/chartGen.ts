@@ -3,7 +3,7 @@
 // energy and the five gameplay stages. Lanes follow the melodic contour (spectral centroid).
 import type { Chart, ChartNote, Difficulty, Lane, PathPoint, SongAnalysis, SwipeDir, TileSize } from '../types';
 import type { AnalysisResult } from './analyzer';
-import { maxAround, timeToFrame, sampleAt, frameTime } from './features';
+import { maxAround, timeToFrame, sampleAt } from './features';
 import { hashString, makeRng } from './rng';
 import { enforcePlayable, PLAY_RULES, rateLevel } from './rules';
 
@@ -37,22 +37,22 @@ interface GenParams {
 
 const PARAMS: Record<Difficulty, GenParams> = {
   normal: {
-    baseNps: 1.15, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 0.5, sixteenthThr: 9,
+    baseNps: 1.1, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 0.9, sixteenthThr: 9,
     minGap: 0.36, maxGapBeats: 4, holdChance: 0.6, holdMinGap: 1.15, overlapHoldChance: 0,
     swipeChance: 0.07, doubleChance: 0.5, doubleQuantile: 0.985,
     burstChance: 0, burstThr: 9, maxBurst: 0, halfGap: 0.46, diagChance: 0, pathChance: 0, pathMinBeats: 99,
   },
   hard: {
-    baseNps: 2.15, stageMult: [0.78, 0.9, 1.0, 1.1, 1.22], maxLevel: 3, eighthThr: 0.18, sixteenthThr: 0.62,
+    baseNps: 2.0, stageMult: [0.78, 0.9, 1.0, 1.1, 1.22], maxLevel: 3, eighthThr: 0.3, sixteenthThr: 0.85,
     minGap: 0.18, maxGapBeats: 3, holdChance: 0.5, holdMinGap: 0.8, overlapHoldChance: 0.18,
     swipeChance: 0.1, doubleChance: 0.55, doubleQuantile: 0.93,
-    burstChance: 0.4, burstThr: 0.5, maxBurst: 2, halfGap: 0.29, diagChance: 0.25, pathChance: 0.6, pathMinBeats: 1.4,
+    burstChance: 0.15, burstThr: 0.75, maxBurst: 1, halfGap: 0.29, diagChance: 0.25, pathChance: 0.6, pathMinBeats: 1.4,
   },
   extreme: {
-    baseNps: 3.3, stageMult: [0.8, 0.92, 1.0, 1.12, 1.26], maxLevel: 3, eighthThr: 0.08, sixteenthThr: 0.3,
+    baseNps: 3.0, stageMult: [0.8, 0.92, 1.0, 1.12, 1.26], maxLevel: 3, eighthThr: 0.12, sixteenthThr: 0.5,
     minGap: 0.115, maxGapBeats: 2, holdChance: 0.45, holdMinGap: 0.62, overlapHoldChance: 0.3,
     swipeChance: 0.13, doubleChance: 0.6, doubleQuantile: 0.86,
-    burstChance: 0.65, burstThr: 0.3, maxBurst: 3, halfGap: 0.27, diagChance: 0.35, pathChance: 0.75, pathMinBeats: 1.0,
+    burstChance: 0.35, burstThr: 0.55, maxBurst: 2, halfGap: 0.27, diagChance: 0.35, pathChance: 0.75, pathMinBeats: 1.0,
   },
 };
 
@@ -81,7 +81,7 @@ interface Ev {
   path?: PathPoint[];
 }
 
-export const GENERATOR_VERSION = 'funkstars-chartgen/2.0';
+export const GENERATOR_VERSION = 'funkstars-chartgen/2.1';
 
 export function generateCharts(res: AnalysisResult, songId: string): Record<Difficulty, Chart> {
   return {
@@ -127,7 +127,8 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
       if (level > P.maxLevel) continue;
       if (level === 2 && sal < P.eighthThr) continue;
       if (level === 3 && sal < P.sixteenthThr) continue;
-      const bonus = [0.32, 0.22, 0.08, 0][level];
+      // strong preference for the felt pulse: downbeats > beats > 8ths > 16ths
+      const bonus = [0.6, 0.45, 0.15, 0][level];
       const score = sal + bonus * (0.45 + 0.55 * loud) + rng() * 0.015;
       slots.push({ t, beat: i, level, sal, loud, score, high: h, low: l });
     }
@@ -254,7 +255,7 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     for (let i = 0; i < evs.length - 1; i++) {
       const a = evs[i], b = evs[i + 1];
       if (b.t - a.t < rules.rapidGap * 2 + P.minGap * 0.5) continue;
-      if (rng() > P.burstChance * (0.4 + a.slot.loud)) continue;
+      if (a.slot.level > 2 || rng() > P.burstChance * (0.4 + a.slot.loud)) continue;
       const cands = allSlots.filter((s) => s.t > a.t + rules.rapidGap - 0.004 && s.t < b.t - P.minGap && s.level >= 2 && s.sal >= P.burstThr);
       const run: Slot[] = [];
       let last = a.t;
@@ -456,22 +457,7 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     else if (m < 0.46 && (mb < 0.56 || m < P.halfGap) && (diff !== 'normal' || e.slot.level >= 2)) e.size = 'half';
   }
 
-  // ---------- 8. micro-align each note group to the actual transient (±18 ms) ----------
-  for (const e of evs) {
-    const fr = timeToFrame(f, e.t);
-    const r = Math.round(0.018 * f.rate);
-    let best = -1, bv = 0.3;
-    for (let k = Math.ceil(fr - r); k <= Math.floor(fr + r); k++) {
-      const v = env.flux[k] ?? 0;
-      if (v > bv && v >= (env.flux[k - 1] ?? 0) && v >= (env.flux[k + 1] ?? 0)) { bv = v; best = k; }
-    }
-    if (best < 0) continue;
-    const y0 = env.flux[best - 1] ?? 0, y1 = env.flux[best], y2 = env.flux[best + 1] ?? 0;
-    const den = y0 - 2 * y1 + y2;
-    const pos = den < 0 ? best + Math.max(-0.5, Math.min(0.5, (0.5 * (y0 - y2)) / den)) : best;
-    const nt = frameTime(f, pos);
-    if (Math.abs(nt - e.t) <= 0.018) e.t = nt;
-  }
+  // Notes stay exactly on the tracked beat grid (the grid itself is fitted to the audio's beats).
 
   // ---------- 9. flatten + enforce playability ----------
   const notes: ChartNote[] = [];

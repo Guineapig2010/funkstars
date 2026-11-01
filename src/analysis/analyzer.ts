@@ -1,7 +1,7 @@
 // Full-song music analysis: tempo, beats, downbeats, energy, sections, drops and stages.
 import type { SongAnalysis, SongSection } from '../types';
 import {
-  computeFeatures, frameTime, highpassEnv, normalizeEnv, percentile, smooth, timeToFrame, maxAround,
+  computeFeatures, frameTime, highpassEnv, normalizeEnv, percentile, smooth, timeToFrame, maxAround, sampleAt,
   type Features,
 } from './features';
 import { estimateTempo, extendBeats, trackBeats } from './tempo';
@@ -54,6 +54,16 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
   const beatFrames = trackBeats(beatEnv, f.rate, tempo.bpm);
   let beats = beatFrames.map((b) => frameTime(f, b));
   beats = extendBeats(beats, duration);
+  // global fine alignment: shift the whole grid so beats sit on the transients (±30 ms, 0.5 ms steps)
+  {
+    let bestD = 0, bestV = -1;
+    for (let d = -0.03; d <= 0.03 + 1e-9; d += 0.0005) {
+      let v = 0;
+      for (const b of beats) v += sampleAt(beatEnv, timeToFrame(f, b + d));
+      if (v > bestV) { bestV = v; bestD = d; }
+    }
+    beats = beats.map((b) => b + bestD).filter((b) => b >= 0);
+  }
   const intervals = beats.slice(1).map((b, i) => b - beats[i]).sort((a, b) => a - b);
   const bpm = intervals.length ? 60 / intervals[Math.floor(intervals.length / 2)] : tempo.bpm;
 

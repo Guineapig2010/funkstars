@@ -4,7 +4,7 @@ import type { ChartNote, Lane, PathPoint, SwipeDir, TileSize } from '../types';
 /** Grace window (s) around a switch / rail arrival in which the player may change lanes. */
 export const TRANSITION_WINDOW = 0.15;
 
-export const SIZE_SCALE: Record<TileSize, number> = { regular: 1, half: 0.5, micro: 0.28 };
+export const SIZE_SCALE: Record<TileSize, number> = { regular: 1, half: 0.6, micro: 0.38 };
 export const sizeOf = (n: ChartNote): TileSize => n.size ?? 'regular';
 
 export function isDiagonal(d?: SwipeDir) { return !!d && d.length > 5; }

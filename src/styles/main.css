@@ -650,3 +650,4 @@ input[type='range']::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .results-types b { color: #fff; margin-right: 2px; }
 .dot.tap.half { height: 6px; vertical-align: 1px; }
 .dot.tap.micro { height: 3px; vertical-align: 3px; }
+.timing-note { text-align: center; font-size: 13px; color: var(--ink-2); margin: -4px 0 0; }

@@ -32,7 +32,7 @@ export function buildTutorial(beats: number[]): { notes: ChartNote[]; lessons: L
   lesson(48, 64, 'Hold', 'Hold the key until the trail ends, then let go.', 'Keep your finger down until the trail ends.');
   for (let i = 0; i < 4; i++) notes.push({ t: B(48 + i * 4), lane: ([1, 0, 2, 1] as Lane[])[i], type: 'hold', dur: B(50 + i * 4) - B(48 + i * 4) });
   // 5. swipes
-  lesson(64, 72, 'Swipe', 'Lane key + direction key together: I ↑  J ←  K ↓  L →  (or W A S D with the arrows preset).', 'Touch the lane and flick in the arrow’s direction.');
+  lesson(64, 72, 'Swipe', 'Press the tile’s lane key AND the key printed on the tile at the same time (I = ↑, J = ←, K = ↓, L = →).', 'Touch the lane and flick in the arrow’s direction.');
   (['up', 'left', 'right', 'down'] as SwipeDir[]).forEach((d, i) => notes.push({ t: B(64 + i * 2), lane: ([1, 0, 2, 1] as Lane[])[i], type: 'swipe', dir: d }));
   // 6. diagonal swipes
   lesson(72, 80, 'Diagonal swipe (gold arrows)', 'Lane key + a diagonal key (U ↖  O ↗  M ↙  . ↘) — or both direction keys at once, e.g. I + L for ↗.', 'Flick diagonally, along the gold arrow.');

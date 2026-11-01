@@ -1,5 +1,5 @@
 {
-  "_readme": "Metadata for built-in songs. Audio files live in public/songs/audio (original filenames preserved). Run `npm run charts` after editing to (re)generate charts + manifest. Charts marked \"edited\": true in public/songs/charts are never overwritten.",
+  "_readme": "Metadata for built-in songs. Original audio files live in songs-src/audio (filenames preserved); they are copied to public/songs/audio/<id>.mp3 for serving. Run `npm run charts` after editing to (re)generate charts + manifest. Charts marked \"edited\": true in public/songs/charts are never overwritten.",
   "songs": [
     { "id": "moms-calling-funk", "title": "Moms Calling Funk", "tag": "Super Slowed", "artist": "Unknown Artist", "genre": "Brazilian Funk",
       "file": "MOMS CALLING FUNK (Super Slowed)(1).mp3", "theme": { "colors": ["#ff3d9a", "#7b2bff", "#ffd23f"], "bg": 0, "motif": "rings" } },

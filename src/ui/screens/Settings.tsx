@@ -35,6 +35,8 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
             <Slider label="Music" value={s.musicVolume} min={0} max={1} onChange={(v) => set({ musicVolume: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Sound effects" value={s.sfxVolume} min={0} max={1} onChange={(v) => { set({ sfxVolume: v }); playSfx('tap', 0.6); }} format={(v) => `${Math.round(v * 100)}%`} />
             <Toggle label="Hit sounds" hint="Subtle click on every hit" value={s.hitSounds} onChange={(v) => set({ hitSounds: v })} />
+            <Toggle label="Auto-sync" hint="Learns your device’s audio delay from your taps while you play and keeps notes on the beat" value={s.autoSync} onChange={(v) => set({ autoSync: v })} />
+            <Toggle label="Assist ticks" hint="Clicks at every note time, mixed with the music — use it to hear whether the chart sits on the beat" value={s.assistTicks} onChange={(v) => set({ assistTicks: v })} />
             <h3>Timing</h3>
             <Slider label="Audio offset" value={s.audioOffsetMs} min={-200} max={300} step={1} onChange={(v) => set({ audioOffsetMs: v })} format={(v) => `${v > 0 ? '+' : ''}${v} ms`} />
             <Slider label="Input offset" value={s.inputOffsetMs} min={-150} max={250} step={1} onChange={(v) => set({ inputOffsetMs: v })} format={(v) => `${v > 0 ? '+' : ''}${v} ms`} />
@@ -48,7 +50,7 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
             <Segmented label="Swipe input" value={s.swipeMode} onChange={(v) => set({ swipeMode: v })} options={[
               { value: 'chord', label: 'Lane + direction' }, { value: 'direction', label: 'Direction key only' }, { value: 'lane', label: 'Lane only (easy)' },
             ]} />
-            <p className="help">Keyboard swipes: press the note’s lane key and its direction key together (within 160 ms, either order). Diagonals: use a diagonal key (default U / O / M / .) or press the two direction keys together (e.g. I + J for ↖). Touch: press the lane and flick in the arrow’s direction. Switch & rail holds: keep holding and press (or slide your finger to) the next lane when the path turns.</p>
+            <p className="help">Keyboard swipes: press the note’s lane key and its direction key together (within 200 ms, either order — the key is printed on each swipe tile). Diagonals: use a diagonal key (default U / O / M / .) or press the two direction keys together (e.g. I + J for ↖). Touch: press the lane and flick in the arrow’s direction. Switch & rail holds: keep holding and press (or slide your finger to) the next lane when the path turns.</p>
             <h3>HUD</h3>
             <Toggle label="Show judgements" value={s.showJudgments} onChange={(v) => set({ showJudgments: v })} />
             <Toggle label="Show early / late" hint="Timing error in ms under each judgement" value={s.showEarlyLate} onChange={(v) => set({ showEarlyLate: v })} />
@@ -71,6 +73,7 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
               { value: 'auto', label: 'Auto' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'ultra', label: 'Ultra' },
             ]} />
             <p className="help">Auto adapts render resolution and particle count to keep the frame rate smooth.</p>
+            <Segmented label="Playfield" value={s.highway} onChange={(v) => set({ highway: v })} options={[{ value: 'flat', label: 'Flat board (big tiles)' }, { value: '3d', label: '3D road' }]} />
             <Slider label="Particle intensity" value={s.particles} min={0} max={1.5} step={0.05} onChange={(v) => set({ particles: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Screen shake" value={s.screenShake} min={0} max={1} step={0.05} onChange={(v) => set({ screenShake: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Background dim" value={s.bgDim} min={0} max={0.8} step={0.05} onChange={(v) => set({ bgDim: v })} format={(v) => `${Math.round(v * 100)}%`} />

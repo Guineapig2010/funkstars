@@ -49,7 +49,7 @@ need HTTPS (or `localhost`).
 |---|---|---|---|
 | Lanes | `A` `S` `D` or `←` `↓` `→` | tap a lane | D-pad ◀▼▶ / X A B / LB RB |
 | Hold | keep the key down | keep the finger down | keep the button down |
-| Swipe ↑ ← ↓ → | lane key **+** `I` `J` `K` `L` (or `↑`, `W`) within 160 ms, either order | flick in the arrow's direction | Y / right stick |
+| Swipe ↑ ← ↓ → | lane key **+** `I` `J` `K` `L` (or `↑`, `W`) within 200 ms — the key is printed on the tile, either order | flick in the arrow's direction | Y / right stick |
 | Diagonal swipe ↖ ↗ ↙ ↘ (gold arrows) | lane key **+** `U` `O` `M` `.`, **or** lane key + two direction keys (e.g. `I`+`L` = ↗) | flick diagonally | right stick (8-way) |
 | Switch / rail hold | keep holding; press the new lane's key when the path turns (letting go of the old one is fine) | slide your finger to the new lane | press the new lane's button |
 | Pause / restart | `Esc` (`P`) / `R` while paused | ❚❚ button | Start |

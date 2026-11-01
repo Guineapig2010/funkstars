@@ -30,7 +30,7 @@ const manifest: SongMeta[] = [];
 const report: string[] = [];
 let addedAt = Date.UTC(2026, 10, 1);
 for (const s of src.songs) {
-  const audioPath = `public/songs/audio/${s.file}`;
+  const audioPath = `songs-src/audio/${s.file}`;
   if (!existsSync(audioPath)) { console.warn(`! missing audio for ${s.id}: ${audioPath}`); continue; }
   const chartPath = `public/songs/charts/${s.id}.json`;
   const mono = decode(audioPath);
@@ -53,7 +53,7 @@ for (const s of src.songs) {
   const noteCounts = Object.fromEntries(DIFFICULTIES.map((d) => [d, file.charts[d].notes.length])) as Record<Difficulty, number>;
   manifest.push({
     id: s.id, title: s.title, artist: s.artist, genre: s.genre, tag: s.tag, fileName: s.file,
-    audioUrl: `songs/audio/${encodeURIComponent(s.file)}`, chartUrl: `songs/charts/${s.id}.json`,
+    audioUrl: `songs/audio/${s.id}.${s.file.split('.').pop()!.toLowerCase()}`, chartUrl: `songs/charts/${s.id}.json`,
     coverUrl: s.cover, duration: Math.round(A.duration * 100) / 100, bpm: A.bpm, levels, noteCounts,
     theme: s.theme, source: s.source ?? 'builtin', addedAt: addedAt++, previewStart: A.previewStart,
   });

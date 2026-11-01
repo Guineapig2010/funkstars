@@ -3,11 +3,11 @@ import type { ChartNote, Judgment } from '../types';
 
 /** Judgement windows in seconds (absolute timing error). */
 export const WINDOWS = {
-  perfectPlus: 0.035,
-  perfect: 0.07,
-  great: 0.12,
+  perfectPlus: 0.04,
+  perfect: 0.08,
+  great: 0.13,
   /** Notes are auto-missed this long after their time. Presses earlier than -great are ignored. */
-  miss: 0.15,
+  miss: 0.16,
 };
 
 export const POINTS: Record<Judgment, number> = { perfectPlus: 100, perfect: 80, great: 40, miss: 0 };

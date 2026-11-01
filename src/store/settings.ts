@@ -30,6 +30,9 @@ export interface Settings {
   laneFlash: boolean;
   bgDim: number;
   noteSkin: NoteSkin;
+  highway: 'flat' | '3d';
+  assistTicks: boolean;
+  autoSync: boolean;
   defaultMode: 'classic' | 'practice';
   practiceSpeed: number;
   practiceStartStage: number;
@@ -93,6 +96,9 @@ export const DEFAULT_SETTINGS: Settings = {
   laneFlash: true,
   bgDim: 0.15,
   noteSkin: 'neon',
+  highway: 'flat',
+  assistTicks: false,
+  autoSync: true,
   defaultMode: 'classic',
   practiceSpeed: 1,
   practiceStartStage: 0,

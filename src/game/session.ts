@@ -57,6 +57,9 @@ export interface SessionResult {
   completed: boolean;
   failed: boolean;
   totalNotes: number;
+  /** Median timing error of the player's presses (ms, + = late) and how many presses it is based on. */
+  timingMs: number | null;
+  timingSamples: number;
   /** Per note-category totals: [cleanly hit, total]. Holds count as clean only when completed. */
   byType: Partial<Record<NoteCategory, [number, number]>>;
 }
@@ -78,7 +81,7 @@ export class GameSession {
   failed = false;
   readonly max: number;
   /** Seconds a keyboard lane press waits for its swipe direction (and vice versa). */
-  chordWindow = 0.16;
+  chordWindow = 0.2;
   swipeMode: SwipeMode = 'chord';
 
   constructor(chart: ChartNote[], public mode: GameMode, public events: SessionEvents = {}) {
@@ -110,7 +113,7 @@ export class GameSession {
       const n = list[k];
       if (n.judged !== null) continue;
       const d = t - n.t;
-      if (d < -WINDOWS.great) return null; // too early: ignore the press entirely
+      if (d < -WINDOWS.miss) return null; // far too early: ignore the press
       if (d <= WINDOWS.miss) return n;
     }
     return null;
@@ -125,8 +128,26 @@ export class GameSession {
     return null;
   }
 
+  /** Signed timing errors (s) of the player's presses against the nearest note in that lane. */
+  readonly pressDeltas: number[] = [];
+  private recordDelta(lane: Lane, t: number) {
+    let best = 9;
+    for (const n of this.byLane[lane]) {
+      const d = t - n.t;
+      if (d < -0.4) break;
+      if (Math.abs(d) < Math.abs(best)) best = d;
+    }
+    if (Math.abs(best) < 0.3) this.pressDeltas.push(best);
+  }
+  /** Median timing error of recent presses (s); positive = player hits late. */
+  medianDelta(last = 0): number | null {
+    const a = (last ? this.pressDeltas.slice(-last) : this.pressDeltas).slice().sort((x, y) => x - y);
+    return a.length ? a[Math.floor(a.length / 2)] : null;
+  }
+
   pressLane(lane: Lane, t: number): RNote | null {
     this.down[lane]++;
+    this.recordDelta(lane, t);
     if (this.failed) return null;
     if (this.transitionTarget(lane, t)) { this.updateHolds(t); return null; }
     const n = this.candidate(lane, t);
@@ -236,6 +257,7 @@ export class GameSession {
     if (this.failed) return null;
     const n = this.candidate(lane, downT);
     if (!n || n.type !== 'swipe') return null;
+    if (Math.abs(downT - n.t) < 0.3) this.pressDeltas.push(downT - n.t);
     if (gestureMatches(n.dir ?? 'up', dx, dy)) this.hit(n, downT - n.t); else this.miss(n);
     return n;
   }
@@ -375,6 +397,8 @@ export class GameSession {
       completed,
       failed: this.failed,
       totalNotes: total,
+      timingMs: this.pressDeltas.length >= 8 ? Math.round((this.medianDelta() ?? 0) * 1000) : null,
+      timingSamples: this.pressDeltas.length,
       byType,
     };
   }
