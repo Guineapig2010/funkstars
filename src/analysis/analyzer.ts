@@ -64,6 +64,43 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
     }
     beats = beats.map((b) => b + bestD).filter((b) => b >= 0);
   }
+  // kick drum hits (low-band onset peaks): the pulse players feel
+  const peaksOf = (e: Float32Array, pct: number, r = 4) => {
+    const thr = percentile(e, pct);
+    const out: number[] = [];
+    for (let i = r; i < e.length - r; i++) {
+      if (e[i] < thr) continue;
+      let ok = true;
+      for (let k = -r; k <= r; k++) if (e[i + k] > e[i]) { ok = false; break; }
+      if (ok) out.push(frameTime(f, i));
+    }
+    return out;
+  };
+  const kicks = peaksOf(env.low, 92);
+  const snares = peaksOf(env.mid, 94);
+  const fracOf = (t: number) => {
+    let lo = 0, hi = beats.length - 1;
+    while (lo < hi - 1) { const m = (lo + hi) >> 1; if (beats[m] <= t) lo = m; else hi = m; }
+    const p = (beats[lo + 1] ?? beats[lo] + 0.5) - beats[lo];
+    return (t - beats[lo]) / p;
+  };
+  {
+    // grid half a beat off the kicks? (kicks mostly land between beats) -> shift by half a beat
+    let onB = 0, half = 0;
+    const strongKicks = peaksOf(env.low, 97);
+    for (const k of strongKicks) { const fr = fracOf(k); if (fr < 0.12 || fr > 0.88) onB++; else if (Math.abs(fr - 0.5) < 0.12) half++; }
+    if (half > onB * 1.3 && half >= strongKicks.length * 0.3) {
+      beats = beats.map((b, i) => b + ((beats[i + 1] ?? b + (b - beats[i - 1])) - b) / 2);
+    }
+    // fine-align the grid on the kick drum itself (±25 ms)
+    let bestD = 0, bestV = -1;
+    for (let d = -0.025; d <= 0.025 + 1e-9; d += 0.0005) {
+      let v = 0;
+      for (const b of beats) v += sampleAt(env.low, timeToFrame(f, b + d)) * 0.7 + sampleAt(beatEnv, timeToFrame(f, b + d)) * 0.3;
+      if (v > bestV) { bestV = v; bestD = d; }
+    }
+    beats = beats.map((b) => b + bestD).filter((b) => b >= 0);
+  }
   const intervals = beats.slice(1).map((b, i) => b - beats[i]).sort((a, b) => a - b);
   const bpm = intervals.length ? 60 / intervals[Math.floor(intervals.length / 2)] : tempo.bpm;
 
@@ -92,6 +129,15 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
     phaseScore[i % 4] += maxAround(env.low, fr, 2) * 1.0 + maxAround(env.flux, fr, 2) * 0.5;
   });
   const downbeatPhase = phaseScore.indexOf(Math.max(...phaseScore));
+
+  // where the groove (drums) actually starts: first bar whose next two bars have drum hits on most beats
+  const hitOnBeat = (b: number) => kicks.some((k) => Math.abs(k - b) < 0.045) || snares.some((s) => Math.abs(s - b) < 0.045);
+  let grooveStart = -1;
+  for (let i = downbeatPhase; i + 8 < beats.length; i += 4) {
+    let n = 0;
+    for (let k = 0; k < 8; k++) if (hitOnBeat(beats[i + k])) n++;
+    if (n >= 5) { grooveStart = beats[i]; break; }
+  }
 
   // first/last musical activity
   let firstOnset = 0;
@@ -198,6 +244,7 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
     envSig: sig,
     envRate: f.rate,
     beatConfidence: Math.round(beatConfidence * 100) / 100,
+    grooveStart: grooveStart >= 0 ? Math.round(grooveStart * 10000) / 10000 : undefined,
     subdivision,
   };
   prog(1, 'Done');

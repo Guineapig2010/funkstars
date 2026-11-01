@@ -37,7 +37,7 @@ interface GenParams {
 
 const PARAMS: Record<Difficulty, GenParams> = {
   normal: {
-    baseNps: 1.1, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 0.9, sixteenthThr: 9,
+    baseNps: 1.1, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 1.1, sixteenthThr: 9,
     minGap: 0.36, maxGapBeats: 4, holdChance: 0.6, holdMinGap: 1.15, overlapHoldChance: 0,
     swipeChance: 0.07, doubleChance: 0.5, doubleQuantile: 0.985,
     burstChance: 0, burstThr: 9, maxBurst: 0, halfGap: 0.46, diagChance: 0, pathChance: 0, pathMinBeats: 99,
@@ -112,7 +112,7 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     const sub = A.subdivision === 3 ? 6 : 4;
     for (let k = 0; k < sub; k++) {
       const t = b0 + ((b1 - b0) * k) / sub;
-      if (t < Math.max(0.6, A.firstOnset - 0.03) || t > endT) continue;
+      if (t < Math.max(0.6, A.firstOnset - 0.03, (A.grooveStart ?? 0) - 0.02) || t > endT) continue;
       const isDown = (i - A.downbeatPhase) % 4 === 0;
       const level = k === 0 ? (isDown ? 0 : 1) : (sub === 4 ? k === 2 : k % 2 === 0) ? 2 : 3;
       const fr = timeToFrame(f, t);
@@ -120,7 +120,8 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
       const l = maxAround(env.low, fr, 2);
       const m = maxAround(env.mid, fr, 2);
       const h = maxAround(env.high, fr, 2);
-      const sal = 0.5 * o + 0.3 * l + 0.18 * m + 0.12 * h;
+      // drum-weighted: kick and snare define the beat players tap to
+      const sal = 0.45 * l + 0.3 * m + 0.1 * h + 0.15 * o;
       const loud = sampleAt(res.loud, fr);
       if (loud < 0.06) continue;
       allSlots.push({ t, beat: i, level, sal, loud, score: sal, high: h, low: l });
@@ -154,6 +155,11 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     picked.push(s);
   };
 
+  // the first tile lands exactly on the downbeat where the groove starts
+  if (A.grooveStart !== undefined) {
+    const first = slots.find((x) => Math.abs(x.t - A.grooveStart!) < 0.01);
+    if (first) insert(first);
+  }
   for (let s = 0; s < 5; s++) {
     const a = s === 0 ? 0 : stages[s];
     const b = s === 4 ? A.duration : stages[s + 1];

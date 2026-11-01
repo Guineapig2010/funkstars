@@ -4,6 +4,7 @@
 //        npm run charts -- --force (also regenerate charts marked "edited")
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { analyzeAudio } from '../src/analysis/analyzer';
 import { generateCharts, GENERATOR_VERSION } from '../src/analysis/chartGen';
 import { validateChart } from '../src/analysis/validate';
@@ -47,13 +48,15 @@ for (const s of src.songs) {
   }
   file.validation = {};
   for (const d of DIFFICULTIES) file.validation[d] = validateChart(file.charts[d], res);
-  writeFileSync(chartPath, JSON.stringify(file));
+  const json = JSON.stringify(file);
+  writeFileSync(chartPath, json);
+  const ver = createHash('sha1').update(json).digest('hex').slice(0, 10);
   const A = file.analysis;
   const levels = Object.fromEntries(DIFFICULTIES.map((d) => [d, file.charts[d].level])) as Record<Difficulty, number>;
   const noteCounts = Object.fromEntries(DIFFICULTIES.map((d) => [d, file.charts[d].notes.length])) as Record<Difficulty, number>;
   manifest.push({
     id: s.id, title: s.title, artist: s.artist, genre: s.genre, tag: s.tag, fileName: s.file,
-    audioUrl: `songs/audio/${s.id}.${s.file.split('.').pop()!.toLowerCase()}`, chartUrl: `songs/charts/${s.id}.json`,
+    audioUrl: `songs/audio/${s.id}.${s.file.split('.').pop()!.toLowerCase()}`, chartUrl: `songs/charts/${s.id}.json?v=${ver}`,
     coverUrl: s.cover, duration: Math.round(A.duration * 100) / 100, bpm: A.bpm, levels, noteCounts,
     theme: s.theme, source: s.source ?? 'builtin', addedAt: addedAt++, previewStart: A.previewStart,
   });
