@@ -1,0 +1,377 @@
+{
+ "version": 1,
+ "songs": [
+  {
+   "id": "moms-calling-funk",
+   "title": "Moms Calling Funk",
+   "artist": "Unknown Artist",
+   "genre": "Brazilian Funk",
+   "tag": "Super Slowed",
+   "fileName": "MOMS CALLING FUNK (Super Slowed)(1).mp3",
+   "audioUrl": "songs/audio/MOMS%20CALLING%20FUNK%20(Super%20Slowed)(1).mp3",
+   "chartUrl": "songs/charts/moms-calling-funk.json",
+   "duration": 131.04,
+   "bpm": 95.23,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 9
+   },
+   "noteCounts": {
+    "normal": 162,
+    "hard": 299,
+    "extreme": 417
+   },
+   "theme": {
+    "colors": [
+     "#ff3d9a",
+     "#7b2bff",
+     "#ffd23f"
+    ],
+    "bg": 0,
+    "motif": "rings"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200000,
+   "previewStart": 21.421644828771615
+  },
+  {
+   "id": "until-im-dead",
+   "title": "Until I'm Dead",
+   "artist": "Unknown Artist",
+   "genre": "Slowed Phonk",
+   "tag": "Super Slowed",
+   "fileName": "Until I'm Dead (Super Slowed)(1).mp3",
+   "audioUrl": "songs/audio/Until%20I'm%20Dead%20(Super%20Slowed)(1).mp3",
+   "chartUrl": "songs/charts/until-im-dead.json",
+   "duration": 127.19,
+   "bpm": 91.92,
+   "levels": {
+    "normal": 4,
+    "hard": 6,
+    "extreme": 8
+   },
+   "noteCounts": {
+    "normal": 135,
+    "hard": 247,
+    "extreme": 361
+   },
+   "theme": {
+    "colors": [
+     "#ff2a2a",
+     "#3a0010",
+     "#ff9a3d"
+    ],
+    "bg": 2,
+    "motif": "eclipse"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200001,
+   "previewStart": 10.444527684901402
+  },
+  {
+   "id": "montagem-bandido",
+   "title": "Montagem Bandido",
+   "artist": "Unknown Artist",
+   "genre": "Funk Montagem",
+   "tag": "Super Slowed",
+   "fileName": "Montagem Bandido (Super Slowed)(1).mp3",
+   "audioUrl": "songs/audio/Montagem%20Bandido%20(Super%20Slowed)(1).mp3",
+   "chartUrl": "songs/charts/montagem-bandido.json",
+   "duration": 109.56,
+   "bpm": 107.15,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 9
+   },
+   "noteCounts": {
+    "normal": 128,
+    "hard": 244,
+    "extreme": 351
+   },
+   "theme": {
+    "colors": [
+     "#19f5c1",
+     "#0b3cff",
+     "#c8ff3d"
+    ],
+    "bg": 1,
+    "motif": "grid"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200002,
+   "previewStart": 17.91990183723493
+  },
+  {
+   "id": "subaru-ladder-funk",
+   "title": "Subaru Ladder Funk",
+   "artist": "Unknown Artist",
+   "genre": "Brazilian Phonk",
+   "fileName": "SUBARU LADDER FUNK(1).mp3",
+   "audioUrl": "songs/audio/SUBARU%20LADDER%20FUNK(1).mp3",
+   "chartUrl": "songs/charts/subaru-ladder-funk.json",
+   "duration": 81.23,
+   "bpm": 129.99,
+   "levels": {
+    "normal": 4,
+    "hard": 8,
+    "extreme": 11
+   },
+   "noteCounts": {
+    "normal": 99,
+    "hard": 187,
+    "extreme": 286
+   },
+   "theme": {
+    "colors": [
+     "#2f7bff",
+     "#00e1ff",
+     "#ffe14d"
+    ],
+    "bg": 1,
+    "motif": "bars"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200003,
+   "previewStart": 17.99641552273999
+  },
+  {
+   "id": "virou",
+   "title": "Virou",
+   "artist": "Unknown Artist",
+   "genre": "Brazilian Funk",
+   "fileName": "virou 1.mp3",
+   "audioUrl": "songs/audio/virou%201.mp3",
+   "chartUrl": "songs/charts/virou.json",
+   "duration": 73.39,
+   "bpm": 134.98,
+   "levels": {
+    "normal": 4,
+    "hard": 8,
+    "extreme": 11
+   },
+   "noteCounts": {
+    "normal": 95,
+    "hard": 177,
+    "extreme": 265
+   },
+   "theme": {
+    "colors": [
+     "#ff8a00",
+     "#ff2d6f",
+     "#ffe5a8"
+    ],
+    "bg": 3,
+    "motif": "sunburst"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200004,
+   "previewStart": 15.114078371805347
+  },
+  {
+   "id": "montagem-camera-lenta",
+   "title": "Montagem Câmera Lenta",
+   "artist": "Unknown Artist",
+   "genre": "Funk Montagem",
+   "tag": "Lyric Video Edit",
+   "fileName": "MONTAGEM CAMERA LENTA Funk Lyric Video (English + Portuguese)(1).mp3",
+   "audioUrl": "songs/audio/MONTAGEM%20CAMERA%20LENTA%20Funk%20Lyric%20Video%20(English%20%2B%20Portuguese)(1).mp3",
+   "chartUrl": "songs/charts/montagem-camera-lenta.json",
+   "duration": 170.95,
+   "bpm": 129.99,
+   "levels": {
+    "normal": 4,
+    "hard": 8,
+    "extreme": 11
+   },
+   "noteCounts": {
+    "normal": 227,
+    "hard": 422,
+    "extreme": 647
+   },
+   "theme": {
+    "colors": [
+     "#a77bff",
+     "#00d0ff",
+     "#ff7bd5"
+    ],
+    "bg": 3,
+    "motif": "waves"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200005,
+   "previewStart": 88.69080014911654
+  },
+  {
+   "id": "last-chance-funk",
+   "title": "Last Chance Funk",
+   "artist": "Unknown Artist",
+   "genre": "Slowed Phonk",
+   "tag": "Alt Version · Ultra Slowed",
+   "fileName": "LAST CHANCE FUNK (Alt Version Ultra Slowed)(2).mp3",
+   "audioUrl": "songs/audio/LAST%20CHANCE%20FUNK%20(Alt%20Version%20Ultra%20Slowed)(2).mp3",
+   "chartUrl": "songs/charts/last-chance-funk.json",
+   "duration": 115.59,
+   "bpm": 74.76,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 9
+   },
+   "noteCounts": {
+    "normal": 129,
+    "hard": 250,
+    "extreme": 338
+   },
+   "theme": {
+    "colors": [
+     "#ff4d4d",
+     "#ffb800",
+     "#2b0a3d"
+    ],
+    "bg": 2,
+    "motif": "shards"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200006,
+   "previewStart": 7.629999563958334
+  },
+  {
+   "id": "faixa-rosa",
+   "title": "Faixa Rosa",
+   "artist": "Jmilton x Ogryzek",
+   "genre": "Slowed Funk",
+   "tag": "Slowed",
+   "fileName": "Faixa Rosa (Slowed) - Jmilton x Ogryzek(2).mp3",
+   "audioUrl": "songs/audio/Faixa%20Rosa%20(Slowed)%20-%20Jmilton%20x%20Ogryzek(2).mp3",
+   "chartUrl": "songs/charts/faixa-rosa.json",
+   "duration": 109.44,
+   "bpm": 72.48,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 11
+   },
+   "noteCounts": {
+    "normal": 128,
+    "hard": 251,
+    "extreme": 406
+   },
+   "theme": {
+    "colors": [
+     "#ff6ec7",
+     "#ffb3e6",
+     "#7a2cff"
+    ],
+    "bg": 0,
+    "motif": "orbs"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200007,
+   "previewStart": 20.482368036531525
+  },
+  {
+   "id": "persona-funk",
+   "title": "Persona Funk",
+   "artist": "Unknown Artist",
+   "genre": "Brazilian Phonk",
+   "tag": "Super Slowed",
+   "fileName": "PERSONA FUNK - SUPER SLOWED(2).mp3",
+   "audioUrl": "songs/audio/PERSONA%20FUNK%20-%20SUPER%20SLOWED(2).mp3",
+   "chartUrl": "songs/charts/persona-funk.json",
+   "duration": 144.31,
+   "bpm": 103.17,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 10
+   },
+   "noteCounts": {
+    "normal": 167,
+    "hard": 312,
+    "extreme": 489
+   },
+   "theme": {
+    "colors": [
+     "#ff1f3d",
+     "#141414",
+     "#f5f5f5"
+    ],
+    "bg": 2,
+    "motif": "prism"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200008,
+   "previewStart": 61.400851893517896
+  },
+  {
+   "id": "sem-demora",
+   "title": "Sem Demora",
+   "artist": "Unknown Artist",
+   "genre": "Slowed Funk",
+   "tag": "Ultra Slowed",
+   "fileName": "SEM DEMORA (Ultra Slowed)(2).mp3",
+   "audioUrl": "songs/audio/SEM%20DEMORA%20(Ultra%20Slowed)(2).mp3",
+   "chartUrl": "songs/charts/sem-demora.json",
+   "duration": 130.88,
+   "bpm": 134.95,
+   "levels": {
+    "normal": 4,
+    "hard": 8,
+    "extreme": 10
+   },
+   "noteCounts": {
+    "normal": 150,
+    "hard": 289,
+    "extreme": 431
+   },
+   "theme": {
+    "colors": [
+     "#3dffb0",
+     "#0a5cff",
+     "#b4ff00"
+    ],
+    "bg": 0,
+    "motif": "spiral"
+   },
+   "source": "builtin",
+   "addedAt": 1793491200009,
+   "previewStart": 27.566310196463373
+  },
+  {
+   "id": "first-light",
+   "title": "First Light",
+   "artist": "Funkstars Sound Lab",
+   "genre": "Synth Funk",
+   "tag": "Tutorial",
+   "fileName": "first-light.mp3",
+   "audioUrl": "songs/audio/first-light.mp3",
+   "chartUrl": "songs/charts/first-light.json",
+   "duration": 89.21,
+   "bpm": 112.01,
+   "levels": {
+    "normal": 4,
+    "hard": 7,
+    "extreme": 10
+   },
+   "noteCounts": {
+    "normal": 101,
+    "hard": 189,
+    "extreme": 284
+   },
+   "theme": {
+    "colors": [
+     "#4df3ff",
+     "#5b6bff",
+     "#ffffff"
+    ],
+    "bg": 1,
+    "motif": "prism"
+   },
+   "source": "demo",
+   "addedAt": 1793491200010,
+   "previewStart": 28.35610838887511
+  }
+ ]
+}

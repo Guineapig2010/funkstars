@@ -1,0 +1,27 @@
+{
+  "_readme": "Metadata for built-in songs. Audio files live in public/songs/audio (original filenames preserved). Run `npm run charts` after editing to (re)generate charts + manifest. Charts marked \"edited\": true in public/songs/charts are never overwritten.",
+  "songs": [
+    { "id": "moms-calling-funk", "title": "Moms Calling Funk", "tag": "Super Slowed", "artist": "Unknown Artist", "genre": "Brazilian Funk",
+      "file": "MOMS CALLING FUNK (Super Slowed)(1).mp3", "theme": { "colors": ["#ff3d9a", "#7b2bff", "#ffd23f"], "bg": 0, "motif": "rings" } },
+    { "id": "until-im-dead", "title": "Until I'm Dead", "tag": "Super Slowed", "artist": "Unknown Artist", "genre": "Slowed Phonk",
+      "file": "Until I'm Dead (Super Slowed)(1).mp3", "theme": { "colors": ["#ff2a2a", "#3a0010", "#ff9a3d"], "bg": 2, "motif": "eclipse" } },
+    { "id": "montagem-bandido", "title": "Montagem Bandido", "tag": "Super Slowed", "artist": "Unknown Artist", "genre": "Funk Montagem",
+      "file": "Montagem Bandido (Super Slowed)(1).mp3", "theme": { "colors": ["#19f5c1", "#0b3cff", "#c8ff3d"], "bg": 1, "motif": "grid" } },
+    { "id": "subaru-ladder-funk", "title": "Subaru Ladder Funk", "artist": "Unknown Artist", "genre": "Brazilian Phonk",
+      "file": "SUBARU LADDER FUNK(1).mp3", "theme": { "colors": ["#2f7bff", "#00e1ff", "#ffe14d"], "bg": 1, "motif": "bars" } },
+    { "id": "virou", "title": "Virou", "artist": "Unknown Artist", "genre": "Brazilian Funk",
+      "file": "virou 1.mp3", "theme": { "colors": ["#ff8a00", "#ff2d6f", "#ffe5a8"], "bg": 3, "motif": "sunburst" } },
+    { "id": "montagem-camera-lenta", "title": "Montagem Câmera Lenta", "tag": "Lyric Video Edit", "artist": "Unknown Artist", "genre": "Funk Montagem",
+      "file": "MONTAGEM CAMERA LENTA Funk Lyric Video (English + Portuguese)(1).mp3", "theme": { "colors": ["#a77bff", "#00d0ff", "#ff7bd5"], "bg": 3, "motif": "waves" } },
+    { "id": "last-chance-funk", "title": "Last Chance Funk", "tag": "Alt Version · Ultra Slowed", "artist": "Unknown Artist", "genre": "Slowed Phonk",
+      "file": "LAST CHANCE FUNK (Alt Version Ultra Slowed)(2).mp3", "theme": { "colors": ["#ff4d4d", "#ffb800", "#2b0a3d"], "bg": 2, "motif": "shards" } },
+    { "id": "faixa-rosa", "title": "Faixa Rosa", "tag": "Slowed", "artist": "Jmilton x Ogryzek", "genre": "Slowed Funk",
+      "file": "Faixa Rosa (Slowed) - Jmilton x Ogryzek(2).mp3", "theme": { "colors": ["#ff6ec7", "#ffb3e6", "#7a2cff"], "bg": 0, "motif": "orbs" } },
+    { "id": "persona-funk", "title": "Persona Funk", "tag": "Super Slowed", "artist": "Unknown Artist", "genre": "Brazilian Phonk",
+      "file": "PERSONA FUNK - SUPER SLOWED(2).mp3", "theme": { "colors": ["#ff1f3d", "#141414", "#f5f5f5"], "bg": 2, "motif": "prism" } },
+    { "id": "sem-demora", "title": "Sem Demora", "tag": "Ultra Slowed", "artist": "Unknown Artist", "genre": "Slowed Funk",
+      "file": "SEM DEMORA (Ultra Slowed)(2).mp3", "theme": { "colors": ["#3dffb0", "#0a5cff", "#b4ff00"], "bg": 0, "motif": "spiral" } },
+    { "id": "first-light", "title": "First Light", "tag": "Tutorial", "artist": "Funkstars Sound Lab", "genre": "Synth Funk",
+      "file": "first-light.mp3", "source": "demo", "theme": { "colors": ["#4df3ff", "#5b6bff", "#ffffff"], "bg": 1, "motif": "prism" } }
+  ]
+}

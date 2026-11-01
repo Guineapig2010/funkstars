@@ -1,0 +1,35 @@
+{
+  "name": "funkstars",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "FUNKSTARS — a premium three-lane rhythm game for desktop and mobile browsers",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "charts": "tsx scripts/build-songs.ts",
+    "validate": "tsx scripts/validate-charts.ts",
+    "icons": "node scripts/make-icons.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "zip": "node scripts/make-zip.mjs"
+  },
+  "dependencies": {
+    "@fontsource/bungee": "^5.3.0",
+    "@fontsource/outfit": "^5.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsx": "^4.23.15",
+    "typescript": "5.8",
+    "vite": "^6.4.5",
+    "vitest": "^5.0.5"
+  }
+}
