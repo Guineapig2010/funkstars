@@ -124,6 +124,7 @@ export function HomeScreen() {
           <Tile icon="chart" title="Progression" sub={`Level ${lv.level} · ${Math.round(lv.pct * 100)}% to next`} color="#19d3ff" onClick={() => nav.go({ name: 'progress' })} />
           <Tile icon="trophy" title="Achievements" sub={`${unlocked} / ${ACHIEVEMENTS.length} unlocked`} color="#ffb81f" onClick={() => nav.go({ name: 'achievements' })} />
           <Tile icon="upload" title="Studio" sub="Import songs · Chart editor" color="#ff4fa3" onClick={() => nav.go({ name: 'studio' })} />
+          <Tile icon="play" title={p.seenTutorial ? 'Tutorial' : 'Tutorial · NEW'} sub="Learn every note type" color="#ffd23f" onClick={() => nav.go({ name: 'play', songId: 'first-light', diff: 'normal', mode: 'practice', tutorial: true, nonce: Date.now() })} />
           <Tile icon="sliders" title="Calibrate" sub={p.calibrated ? 'Latency tuned ✓' : 'Sync audio & input'} color="#2fd87a" onClick={() => nav.go({ name: 'calibrate' })} />
           <Tile icon="gear" title="Settings" sub="Controls · Graphics · Audio" color="#a0a8c8" onClick={() => nav.go({ name: 'settings' })} />
           <div className="home-stats">

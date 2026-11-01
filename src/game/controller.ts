@@ -11,6 +11,7 @@ import { getSettings, keyLabel, subscribeSettings, type Settings } from '../stor
 import { loadSongBuffer, decoderAlignment } from '../store/songs';
 import { coverCanvas } from '../ui/cover';
 import { laneColorsFor } from './palette';
+import { DIR_VEC, sizeOf } from './notes';
 
 export interface GameConfig {
   meta: SongMeta;
@@ -91,12 +92,13 @@ export class GameController {
     const notes = startAt > 0 ? chart.filter((n) => n.t >= startAt + 0.5) : chart;
     this.session = new GameSession(notes, this.cfg.mode, {
       onJudge: (n, j, d) => {
-        this.renderer.onJudge(n.lane, j, d, n.type);
+        this.renderer.onJudge(n.lane, j, d, n.type, n.type === 'tap' ? sizeOf(n) : 'regular');
         if (j !== 'miss') {
           if (n.type === 'swipe') { this.swipesHit++; playSfx('swipe', 0.8); }
           playSfx(j === 'perfectPlus' ? 'perfectPlus' : 'tap', n.type === 'swipe' ? 0.35 : 0.55);
         } else playSfx('miss', 0.5);
       },
+      onTransition: (n, lane) => { this.renderer.onTransition(lane, n); playSfx('holdEnd', 0.35, 1.25); },
       onHoldEnd: (n, ok) => { this.renderer.onHoldEnd(n.lane, ok); if (ok) { this.holdsCompleted++; playSfx('holdEnd', 0.45); } },
       onMilestone: (c) => { this.renderer.onMilestone(c); playSfx('combo', 0.5); background.pulse(1.2); },
       onFail: () => this.fail(),
@@ -116,7 +118,8 @@ export class GameController {
       laneUp: (l, ts) => this.onLaneUp(l, ts),
       dir: (d, ts) => this.onDir(d, ts),
       touchDown: (l, ts) => this.onTouchDown(l, ts),
-      swipeGesture: (l, d, ts) => this.onSwipe(l, d, ts),
+      swipeGesture: (l, dx, dy, ts) => this.onSwipe(l, dx, dy, ts),
+      slide: (from, to, ts) => this.onSlide(from, to, ts),
       pause: () => (this.paused ? this.resume() : this.pause()),
       restart: () => { if (this.paused) this.restart(); },
       hint: (k) => { this.inputHint = k; },
@@ -191,7 +194,8 @@ export class GameController {
     if (!this.canInput()) return false;
     return this.session.touchDown(l, this.inputTime(ts)).awaitingSwipe;
   }
-  private onSwipe(l: Lane, d: SwipeDir, ts: number) { if (this.canInput()) this.session.swipeGesture(l, d, this.inputTime(ts)); }
+  private onSwipe(l: Lane, dx: number, dy: number, ts: number) { if (this.canInput()) this.session.swipeGesture(l, dx, dy, this.inputTime(ts)); }
+  private onSlide(from: Lane, to: Lane, ts: number) { return this.canInput() ? this.session.slide(from, to, this.inputTime(ts)) : false; }
 
   private stageAt(t: number) {
     const st = this.cfg.chart.analysis.stages;
@@ -258,7 +262,7 @@ export class GameController {
     const kl = [s.keys.lane0[0], s.keys.lane1[0], s.keys.lane2[0]].map(keyLabel);
     this.renderer.draw({
       t, dt, notes: this.notes, firstVisible: this.firstVisible, beats: A.beats, downbeatPhase: A.downbeatPhase,
-      session: this.session, pressed: [0, 1, 2].map((l) => this.input.isPressed(l)), stage: this.stage,
+      session: this.session, pressed: [0, 1, 2].map((l) => this.input.isPressed(l) || this.session.isLaneDown(l as Lane)), stage: this.stage,
       songProgress: t / A.duration, intensity, beatPulse, countdown: cd, inputHint: this.inputHint,
       keyLabels: this.inputHint === 'gamepad' ? ['◀ / X', '▼ / A', '▶ / B'] : kl,
       title: this.cfg.meta.title, artist: this.cfg.meta.artist, diffLabel: this.cfg.difficulty.toUpperCase(), diffColor: DIFF_COLORS[this.cfg.difficulty],
@@ -367,12 +371,13 @@ export class GameController {
     return now + ((t - this.player.songTime(now)) * 1000) / this.player.rate;
   }
   /** Inject an input through the normal handlers with an explicit event timestamp. */
-  testInput(kind: 'down' | 'up' | 'dir' | 'touch' | 'swipe', lane: Lane, dir: SwipeDir, ts: number) {
+  testInput(kind: 'down' | 'up' | 'dir' | 'touch' | 'swipe' | 'slide', lane: Lane, dir: SwipeDir, ts: number, to?: Lane) {
+    if (kind === 'slide') { this.onSlide(lane, to ?? lane, ts); return; }
     if (kind === 'down') this.onLaneDown(lane, ts);
     else if (kind === 'up') this.onLaneUp(lane, ts);
     else if (kind === 'dir') this.onDir(dir, ts);
     else if (kind === 'touch') this.onTouchDown(lane, ts);
-    else this.onSwipe(lane, dir, ts);
+    else { const v = DIR_VEC[dir]; this.onSwipe(lane, v[0] * 50, v[1] * 50, ts); }
   }
 
   get isPaused() { return this.paused; }

@@ -19,8 +19,8 @@
    },
    "noteCounts": {
     "normal": 162,
-    "hard": 299,
-    "extreme": 417
+    "hard": 294,
+    "extreme": 415
    },
    "theme": {
     "colors": [
@@ -52,9 +52,9 @@
     "extreme": 8
    },
    "noteCounts": {
-    "normal": 135,
-    "hard": 247,
-    "extreme": 361
+    "normal": 136,
+    "hard": 246,
+    "extreme": 365
    },
    "theme": {
     "colors": [
@@ -86,9 +86,9 @@
     "extreme": 9
    },
    "noteCounts": {
-    "normal": 128,
-    "hard": 244,
-    "extreme": 351
+    "normal": 129,
+    "hard": 240,
+    "extreme": 343
    },
    "theme": {
     "colors": [
@@ -115,13 +115,13 @@
    "bpm": 129.99,
    "levels": {
     "normal": 4,
-    "hard": 8,
+    "hard": 7,
     "extreme": 11
    },
    "noteCounts": {
     "normal": 99,
-    "hard": 187,
-    "extreme": 286
+    "hard": 186,
+    "extreme": 290
    },
    "theme": {
     "colors": [
@@ -148,13 +148,13 @@
    "bpm": 134.98,
    "levels": {
     "normal": 4,
-    "hard": 8,
+    "hard": 7,
     "extreme": 11
    },
    "noteCounts": {
     "normal": 95,
-    "hard": 177,
-    "extreme": 265
+    "hard": 173,
+    "extreme": 267
    },
    "theme": {
     "colors": [
@@ -187,8 +187,8 @@
    },
    "noteCounts": {
     "normal": 227,
-    "hard": 422,
-    "extreme": 647
+    "hard": 420,
+    "extreme": 643
    },
    "theme": {
     "colors": [
@@ -217,12 +217,12 @@
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 9
+    "extreme": 8
    },
    "noteCounts": {
     "normal": 129,
-    "hard": 250,
-    "extreme": 338
+    "hard": 247,
+    "extreme": 335
    },
    "theme": {
     "colors": [
@@ -254,9 +254,9 @@
     "extreme": 11
    },
    "noteCounts": {
-    "normal": 128,
-    "hard": 251,
-    "extreme": 406
+    "normal": 127,
+    "hard": 252,
+    "extreme": 415
    },
    "theme": {
     "colors": [
@@ -288,9 +288,9 @@
     "extreme": 10
    },
    "noteCounts": {
-    "normal": 167,
-    "hard": 312,
-    "extreme": 489
+    "normal": 165,
+    "hard": 313,
+    "extreme": 481
    },
    "theme": {
     "colors": [
@@ -319,12 +319,12 @@
    "levels": {
     "normal": 4,
     "hard": 8,
-    "extreme": 10
+    "extreme": 11
    },
    "noteCounts": {
     "normal": 150,
-    "hard": 289,
-    "extreme": 431
+    "hard": 286,
+    "extreme": 435
    },
    "theme": {
     "colors": [
@@ -353,12 +353,12 @@
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 10
+    "extreme": 11
    },
    "noteCounts": {
     "normal": 101,
-    "hard": 189,
-    "extreme": 284
+    "hard": 195,
+    "extreme": 286
    },
    "theme": {
     "colors": [

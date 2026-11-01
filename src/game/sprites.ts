@@ -85,8 +85,9 @@ export function sparkSprite(color: string): Sprite {
 /**
  * Note sprite. Width `w`, height `h` in device pixels. Includes a glow margin `pad` on all sides.
  */
-export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, kind: 'tap' | 'hold' | 'swipe', dir?: SwipeDir): { img: Sprite; pad: number } {
-  const pad = Math.round(h * 0.6);
+export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, kind: 'tap' | 'hold' | 'swipe', dir?: SwipeDir, size: 'regular' | 'half' | 'micro' = 'regular'): { img: Sprite; pad: number } {
+  // glow margin is based on the regular tile height so short tiles keep a readable halo
+  const pad = Math.round(Math.max(h, w * 0.2) * 0.6);
   const c = canvas(w + pad * 2, h + pad * 2);
   const g = c.getContext('2d')!;
   const x = pad, y = pad;
@@ -124,8 +125,8 @@ export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, 
     roundRect(g, x, y, w, h, r);
     g.fillStyle = body;
     g.fill();
-    // rim
-    g.lineWidth = Math.max(1.5, h * 0.07);
+    // rim (short tiles get a proportionally stronger rim so they stay readable)
+    g.lineWidth = Math.max(1.5, h * (size === 'micro' ? 0.16 : size === 'half' ? 0.1 : 0.07));
     g.strokeStyle = skin === 'gold' ? '#fff3b0' : 'rgba(255,255,255,0.9)';
     roundRect(g, x + g.lineWidth / 2, y + g.lineWidth / 2, w - g.lineWidth, h - g.lineWidth, r);
     g.stroke();
@@ -167,7 +168,8 @@ export function noteSprite(skin: NoteSkin, color: string, w: number, h: number, 
     // chevron arrow
     g.save();
     g.translate(x + w / 2, y + h / 2);
-    const rot = dir === 'down' ? Math.PI : dir === 'left' ? -Math.PI / 2 : dir === 'right' ? Math.PI / 2 : 0;
+    const ROT: Record<string, number> = { up: 0, upright: Math.PI / 4, right: Math.PI / 2, downright: (3 * Math.PI) / 4, down: Math.PI, downleft: (-3 * Math.PI) / 4, left: -Math.PI / 2, upleft: -Math.PI / 4 };
+    const rot = ROT[dir ?? 'up'] ?? 0;
     g.rotate(rot);
     const s = h * 0.62;
     g.lineJoin = 'round';

@@ -12,6 +12,8 @@ export const WINDOWS = {
 
 export const POINTS: Record<Judgment, number> = { perfectPlus: 100, perfect: 80, great: 40, miss: 0 };
 export const ACC_WEIGHT: Record<Judgment, number> = { perfectPlus: 1, perfect: 0.9, great: 0.5, miss: 0 };
+/** Points (before multiplier) for each switch / rail transition reached in time. */
+export const TRANSITION_POINTS = 50;
 /** Hold body points per second (before multiplier). */
 export const HOLD_RATE = 60;
 /** Releasing within this time before a hold's end counts as completed. */
@@ -42,7 +44,10 @@ export function maxScore(notes: ChartNote[]): number {
     const m = multiplierFor(combo);
     total += POINTS.perfectPlus * m;
     combo++;
-    if (n.type === 'hold' && n.dur) total += HOLD_RATE * n.dur * multiplierFor(combo);
+    if (n.type === 'hold' && n.dur) {
+      total += HOLD_RATE * n.dur * multiplierFor(combo);
+      total += (n.path?.length ?? 0) * TRANSITION_POINTS * multiplierFor(combo);
+    }
   }
   return Math.round(total);
 }

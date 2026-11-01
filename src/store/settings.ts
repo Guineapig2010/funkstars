@@ -1,7 +1,7 @@
 // Persistent settings (localStorage) with a tiny subscribe API for React.
 import { useSyncExternalStore } from 'react';
 
-export type KeyAction = 'lane0' | 'lane1' | 'lane2' | 'up' | 'down' | 'left' | 'right' | 'pause' | 'restart';
+export type KeyAction = 'lane0' | 'lane1' | 'lane2' | 'up' | 'down' | 'left' | 'right' | 'upleft' | 'upright' | 'downleft' | 'downright' | 'pause' | 'restart';
 export type Quality = 'auto' | 'low' | 'medium' | 'high' | 'ultra';
 export type ColorMode = 'theme' | 'classic' | 'deuteranopia' | 'protanopia' | 'tritanopia' | 'highContrast';
 export type NoteSkin = 'neon' | 'crystal' | 'ring' | 'gold' | 'pixel';
@@ -39,26 +39,29 @@ export interface Settings {
 
 export const KEY_PRESETS: Record<string, { label: string; keys: Record<KeyAction, string[]> }> = {
   default: {
-    label: 'A S D lanes + I J K L swipes',
+    label: 'A S D lanes + I J K L swipes (U O M . diagonals)',
     keys: {
       lane0: ['KeyA', 'ArrowLeft'], lane1: ['KeyS', 'ArrowDown'], lane2: ['KeyD', 'ArrowRight'],
       up: ['KeyI', 'ArrowUp', 'KeyW'], left: ['KeyJ'], down: ['KeyK'], right: ['KeyL'],
+      upleft: ['KeyU'], upright: ['KeyO'], downleft: ['KeyM'], downright: ['Period'],
       pause: ['Escape', 'KeyP'], restart: ['KeyR'],
     },
   },
   arrows: {
-    label: '← ↓ → lanes + W A S D swipes',
+    label: '← ↓ → lanes + W A S D swipes (Q E Z C diagonals)',
     keys: {
       lane0: ['ArrowLeft'], lane1: ['ArrowDown'], lane2: ['ArrowRight'],
       up: ['KeyW', 'ArrowUp'], left: ['KeyA'], down: ['KeyS'], right: ['KeyD'],
+      upleft: ['KeyQ'], upright: ['KeyE'], downleft: ['KeyZ'], downright: ['KeyC'],
       pause: ['Escape', 'KeyP'], restart: ['KeyR'],
     },
   },
   jkl: {
-    label: 'J K L lanes + W A S D swipes',
+    label: 'J K L lanes + W A S D swipes (Q E Z C diagonals)',
     keys: {
       lane0: ['KeyJ'], lane1: ['KeyK'], lane2: ['KeyL'],
       up: ['KeyW', 'ArrowUp'], left: ['KeyA'], down: ['KeyS'], right: ['KeyD'],
+      upleft: ['KeyQ'], upright: ['KeyE'], downleft: ['KeyZ'], downright: ['KeyC'],
       pause: ['Escape', 'KeyP'], restart: ['KeyR'],
     },
   },
@@ -106,7 +109,13 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      return { ...DEFAULT_SETTINGS, ...s, keys: { ...DEFAULT_SETTINGS.keys, ...(s.keys ?? {}) } };
+      const keys = { ...DEFAULT_SETTINGS.keys, ...(s.keys ?? {}) } as Record<KeyAction, string[]>;
+      // v1 saves have no diagonal actions: add defaults only where the key isn't already bound
+      const used = new Set(Object.entries(s.keys ?? {}).flatMap(([, v]) => v as string[]));
+      for (const a of ['upleft', 'upright', 'downleft', 'downright'] as KeyAction[]) {
+        if (!s.keys?.[a]) keys[a] = DEFAULT_SETTINGS.keys[a].filter((c) => !used.has(c));
+      }
+      return { ...DEFAULT_SETTINGS, ...s, keys };
     }
   } catch { /* storage unavailable */ }
   return { ...DEFAULT_SETTINGS };

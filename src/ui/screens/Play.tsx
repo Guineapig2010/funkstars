@@ -9,6 +9,34 @@ import { toast } from '../components/toasts';
 import { updateSettings, useSettings } from '../../store/settings';
 import { playSfx } from '../../audio/sfx';
 import type { ChartNote } from '../../types';
+import { buildTutorial, type Lesson } from '../../game/tutorial';
+import { updateProfile } from '../../store/profile';
+
+function TutorialCaptions({ lessons, gameRef }: { lessons: Lesson[]; gameRef: React.RefObject<GameController | null> }) {
+  const [idx, setIdx] = useState(-1);
+  const touch = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      const t = gameRef.current?.songTime ?? -9;
+      let k = -1;
+      lessons.forEach((l, i) => { if (t >= l.t && t < l.end + 0.5) k = i; });
+      setIdx((cur) => (cur === k ? cur : k));
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [lessons, gameRef]);
+  const l = lessons[idx];
+  if (!l) return idx === -1 && lessons.length ? <div className="tut-caption no-game-input"><small>TUTORIAL</small><b>Get ready</b><span>Notes fall toward the glowing line — hit them as they cross it.</span></div> : null;
+  return (
+    <div className="tut-caption no-game-input" key={idx}>
+      <small>LESSON {idx + 1} / {lessons.length}</small>
+      <b>{l.title}</b>
+      <span>{touch ? l.touch : l.keys}</span>
+    </div>
+  );
+}
 
 type PlayRoute = Extract<Route, { name: 'play' }>;
 
@@ -24,6 +52,7 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
   const s = useSettings();
 
   useEffect(() => {
@@ -34,11 +63,13 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
     setPaused(false);
     (async () => {
       try {
-        const chart = await getChartFile(song);
+        const chart = await getChartFile(song, { ignoreOverride: !!route.tutorial });
         if (cancelled || !wrapRef.current || !canvasRef.current) return;
+        let override = route.playtest ? playtestNotes ?? undefined : undefined;
+        if (route.tutorial) { const tut = buildTutorial(chart.analysis.beats); override = tut.notes; setLessons(tut.lessons); }
         const g = new GameController(wrapRef.current, canvasRef.current, {
           meta: song, chart, difficulty: route.diff, mode: route.mode,
-          notesOverride: route.playtest ? playtestNotes ?? undefined : undefined, startAt: route.startAt,
+          notesOverride: override, startAt: route.startAt,
         }, {
           onFinish: (info) => finish(info),
           onPauseChange: (p) => setPaused(p),
@@ -58,6 +89,12 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
   }, [route.songId, route.diff, route.mode, nonce]);
 
   const finish = (info: FinishInfo) => {
+    if (route.tutorial) {
+      updateProfile((p) => { p.seenTutorial = true; });
+      toast({ kind: 'info', icon: '🎓', title: 'Tutorial complete', text: `${info.result.counts.perfectPlus + info.result.counts.perfect + info.result.counts.great} / ${info.result.totalNotes} notes hit — you know every note type now!` });
+      nav.back();
+      return;
+    }
     if (route.playtest) { nav.back(); return; }
     const outcome = recordResult(route.songId, route.diff, route.mode, info.result, info.playSeconds, { holdsCompleted: info.holdsCompleted, swipesHit: info.swipesHit });
     const unlocked = checkAchievements();
@@ -76,6 +113,7 @@ export function PlayScreen({ route }: { route: PlayRoute }) {
       {!loading && !error && (
         <button className="pause-btn no-game-input" aria-label="Pause" onClick={() => gameRef.current?.pause()}><Icon name="pause" size={22} /></button>
       )}
+      {route.tutorial && !loading && <TutorialCaptions lessons={lessons} gameRef={gameRef} />}
       {loading && !error && (
         <div className="play-loading"><div className="spinner" /><span>Loading track…</span></div>
       )}

@@ -1,7 +1,7 @@
 // Music-driven chart generation. Notes are placed on beat-grid slots ranked by the strength of
 // real audio transients (kick / snare / hats / melodic onsets), with density following the song's
 // energy and the five gameplay stages. Lanes follow the melodic contour (spectral centroid).
-import type { Chart, ChartNote, Difficulty, Lane, SongAnalysis, SwipeDir } from '../types';
+import type { Chart, ChartNote, Difficulty, Lane, PathPoint, SongAnalysis, SwipeDir, TileSize } from '../types';
 import type { AnalysisResult } from './analyzer';
 import { maxAround, timeToFrame, sampleAt, frameTime } from './features';
 import { hashString, makeRng } from './rng';
@@ -23,6 +23,16 @@ interface GenParams {
   swipeChance: number;
   doubleChance: number;
   doubleQuantile: number;
+  /** Rapid microtile bursts on real fast onsets (16ths / triplets / rolls). */
+  burstChance: number;
+  burstThr: number;
+  maxBurst: number;
+  /** Notes closer than this become half tiles. */
+  halfGap: number;
+  diagChance: number;
+  /** Chance a long hold becomes a switch / rail hold, and the minimum length in beats. */
+  pathChance: number;
+  pathMinBeats: number;
 }
 
 const PARAMS: Record<Difficulty, GenParams> = {
@@ -30,16 +40,19 @@ const PARAMS: Record<Difficulty, GenParams> = {
     baseNps: 1.15, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 0.5, sixteenthThr: 9,
     minGap: 0.36, maxGapBeats: 4, holdChance: 0.6, holdMinGap: 1.15, overlapHoldChance: 0,
     swipeChance: 0.07, doubleChance: 0.5, doubleQuantile: 0.985,
+    burstChance: 0, burstThr: 9, maxBurst: 0, halfGap: 0.46, diagChance: 0, pathChance: 0, pathMinBeats: 99,
   },
   hard: {
     baseNps: 2.15, stageMult: [0.78, 0.9, 1.0, 1.1, 1.22], maxLevel: 3, eighthThr: 0.18, sixteenthThr: 0.62,
     minGap: 0.18, maxGapBeats: 3, holdChance: 0.5, holdMinGap: 0.8, overlapHoldChance: 0.18,
     swipeChance: 0.1, doubleChance: 0.55, doubleQuantile: 0.93,
+    burstChance: 0.4, burstThr: 0.5, maxBurst: 2, halfGap: 0.29, diagChance: 0.25, pathChance: 0.6, pathMinBeats: 1.4,
   },
   extreme: {
     baseNps: 3.3, stageMult: [0.8, 0.92, 1.0, 1.12, 1.26], maxLevel: 3, eighthThr: 0.08, sixteenthThr: 0.3,
     minGap: 0.115, maxGapBeats: 2, holdChance: 0.45, holdMinGap: 0.62, overlapHoldChance: 0.3,
     swipeChance: 0.13, doubleChance: 0.6, doubleQuantile: 0.86,
+    burstChance: 0.65, burstThr: 0.3, maxBurst: 3, halfGap: 0.27, diagChance: 0.35, pathChance: 0.75, pathMinBeats: 1.0,
   },
 };
 
@@ -63,9 +76,12 @@ interface Ev {
   dir?: SwipeDir;
   partner?: { lane: Lane; type: 'tap' | 'swipe'; dir?: SwipeDir };
   triple?: boolean;
+  burst?: boolean;
+  size?: TileSize;
+  path?: PathPoint[];
 }
 
-export const GENERATOR_VERSION = 'funkstars-chartgen/1.2';
+export const GENERATOR_VERSION = 'funkstars-chartgen/2.0';
 
 export function generateCharts(res: AnalysisResult, songId: string): Record<Difficulty, Chart> {
   return {
@@ -87,6 +103,8 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
 
   // ---------- 1. candidate slots ----------
   const slots: Slot[] = [];
+  /** Every grid slot incl. fine subdivisions (used for microtile bursts and switch timing). */
+  const allSlots: Slot[] = [];
   const endT = Math.min(A.lastOnset + 0.25, A.duration - 0.4);
   for (let i = 0; i < beats.length - 1; i++) {
     const b0 = beats[i];
@@ -97,7 +115,6 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
       if (t < Math.max(0.6, A.firstOnset - 0.03) || t > endT) continue;
       const isDown = (i - A.downbeatPhase) % 4 === 0;
       const level = k === 0 ? (isDown ? 0 : 1) : (sub === 4 ? k === 2 : k % 2 === 0) ? 2 : 3;
-      if (level > P.maxLevel) continue;
       const fr = timeToFrame(f, t);
       const o = maxAround(env.flux, fr, 2);
       const l = maxAround(env.low, fr, 2);
@@ -106,6 +123,8 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
       const sal = 0.5 * o + 0.3 * l + 0.18 * m + 0.12 * h;
       const loud = sampleAt(res.loud, fr);
       if (loud < 0.06) continue;
+      allSlots.push({ t, beat: i, level, sal, loud, score: sal, high: h, low: l });
+      if (level > P.maxLevel) continue;
       if (level === 2 && sal < P.eighthThr) continue;
       if (level === 3 && sal < P.sixteenthThr) continue;
       const bonus = [0.32, 0.22, 0.08, 0][level];
@@ -229,6 +248,37 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     evs.push({ t: s.t, slot: s, lane, type: 'tap' });
   });
 
+  // ---------- 3b. microtile bursts on genuinely fast onsets ----------
+  if (P.burstChance > 0) {
+    const added: Ev[] = [];
+    for (let i = 0; i < evs.length - 1; i++) {
+      const a = evs[i], b = evs[i + 1];
+      if (b.t - a.t < rules.rapidGap * 2 + P.minGap * 0.5) continue;
+      if (rng() > P.burstChance * (0.4 + a.slot.loud)) continue;
+      const cands = allSlots.filter((s) => s.t > a.t + rules.rapidGap - 0.004 && s.t < b.t - P.minGap && s.level >= 2 && s.sal >= P.burstThr);
+      const run: Slot[] = [];
+      let last = a.t;
+      for (const s of cands) {
+        if (run.length >= P.maxBurst) break;
+        const gap = s.t - last;
+        if (gap < rules.rapidGap - 0.004) continue;
+        if (gap > 0.21) break;
+        run.push(s);
+        last = s.t;
+      }
+      if (!run.length) continue;
+      const jack = rng() < 0.45;
+      let lane = a.lane;
+      for (const s of run) {
+        if (!jack) lane = (lane === 1 ? (rng() < 0.5 ? 0 : 2) : 1) as Lane;
+        added.push({ t: s.t, slot: s, lane, type: 'tap', burst: true });
+      }
+      a.burst = true;
+    }
+    evs.push(...added);
+    evs.sort((x, y) => x.t - y.t);
+  }
+
   // ---------- 4. holds on sustained sounds ----------
   const loudAt = (t: number) => sampleAt(res.loud, timeToFrame(f, t));
   const fluxMean = (t0: number, t1: number) => {
@@ -242,7 +292,7 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
   for (let i = 0; i < evs.length - 1; i++) {
     const e = evs[i];
     const g = evs[i + 1].t - e.t;
-    if (g < P.holdMinGap) continue;
+    if (g < P.holdMinGap || e.burst) continue;
     const span = g * 0.7;
     let sus = 0;
     for (let k = 1; k <= 6; k++) sus += loudAt(e.t + (span * k) / 6);
@@ -279,6 +329,47 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     }
   }
 
+  // ---------- 4b. switch / rail holds on long sustained notes ----------
+  if (P.pathChance > 0) {
+    // long rests after a tap can carry a travelling hold as well
+    for (let i = 0; i < evs.length - 1; i++) {
+      const e = evs[i];
+      if (e.type !== 'tap' || e.burst || e.partner || e.triple) continue;
+      const gap = evs[i + 1].t - e.t;
+      if (gap < Math.max(1.05, P.pathMinBeats * beatLen + rules.releaseGap) || rng() > P.pathChance * 0.6) continue;
+      const d = snapDur(gap - rules.releaseGap);
+      if (d >= 0.85) { e.type = 'hold'; e.dur = d; }
+    }
+    for (const e of evs) {
+      if (e.type !== 'hold' || !e.dur || e.dur < Math.max(0.85, P.pathMinBeats * beatLen) || e.partner || rng() > P.pathChance) continue;
+      const end = e.t + e.dur;
+      if (evs.some((x) => x !== e && x.t > e.t - 0.01 && x.t < end + rules.releaseGap)) continue; // keep the hold alone on the highway
+      const want = diff === 'extreme' && e.dur >= 3 * beatLen ? 2 : 1;
+      const inner = allSlots.filter((s) => s.t > e.t + 0.28 && s.t < end - 0.3).sort((a, b) => b.sal - a.sal + (a.level - b.level) * 0.05);
+      const chosen: Slot[] = [];
+      for (const s of inner) {
+        if (chosen.length >= want) break;
+        if (chosen.every((c) => Math.abs(c.t - s.t) > 0.6)) chosen.push(s);
+      }
+      if (!chosen.length) continue;
+      chosen.sort((a, b) => a.t - b.t);
+      let lane = e.lane;
+      const path: PathPoint[] = [];
+      for (const s of chosen) {
+        const dc = Math.log2(Math.max(50, cen(s.t + 0.05)) / Math.max(50, cen(e.t + 0.05)));
+        let to = lane + (dc > 0.05 ? 1 : dc < -0.05 ? -1 : rng() < 0.5 ? 1 : -1);
+        if (to < 0 || to > 2) to = lane + (lane === 0 ? 1 : -1);
+        if (diff === 'extreme' && rng() < 0.2 && (lane === 0 || lane === 2)) to = 2 - lane;
+        const strongHit = s.sal >= 0.35;
+        const room = (path.length < chosen.length - 1 ? chosen[path.length + 1].t : end) - s.t - 0.25;
+        const slide = strongHit ? 0 : Math.max(0, Math.min(beatLen, 0.6, room));
+        path.push({ t: Math.round(s.t * 10000) / 10000, lane: to as Lane, ...(slide >= 0.2 ? { slide: Math.round(slide * 1000) / 1000 } : {}) });
+        lane = to as Lane;
+      }
+      e.path = path;
+    }
+  }
+
   // ---------- 5. swipes on accents ----------
   const highs = slots.map((s) => s.high).sort((a, b) => a - b);
   const highThr = highs[Math.floor(highs.length * 0.9)] ?? 1;
@@ -288,7 +379,7 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     if (e.type !== 'tap') continue;
     const before = e.t - evs[i - 1].t - (evs[i - 1].dur ?? 0);
     const after = evs[i + 1].t - e.t;
-    if (before < 0.12 || after < rules.swipeGapAfter) continue;
+    if (before < Math.max(0.12, P.minGap) || after < rules.swipeGapAfter || e.burst) continue;
     const accent = e.slot.high >= highThr || isDropOrStage(e.t) || after > beatLen * 2;
     const p = P.swipeChance * (accent ? 2.6 : 0.6);
     if (rng() > p) continue;
@@ -296,6 +387,11 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     const nl = evs[i + 1].lane;
     const r = rng();
     e.dir = r < 0.5 ? 'up' : r < 0.62 ? 'down' : nl > e.lane ? 'right' : nl < e.lane ? 'left' : r < 0.81 ? 'left' : 'right';
+    if (rng() < P.diagChance * (accent ? 1.2 : 0.8)) {
+      const side = nl > e.lane ? 'right' : nl < e.lane ? 'left' : rng() < 0.5 ? 'left' : 'right';
+      const vert = e.dir === 'down' ? 'down' : e.dir === 'up' ? 'up' : rng() < 0.7 ? 'up' : 'down';
+      e.dir = `${vert}${e.dir === 'left' || e.dir === 'right' ? e.dir : side}` as SwipeDir;
+    }
   }
 
   // ---------- 6. simultaneous notes on the strongest hits ----------
@@ -347,6 +443,19 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     }
   }
 
+  // ---------- 7b. tile sizes from the local rhythm (visual only: timing windows are unchanged) ----------
+  const groupTimes = [...new Set(evs.map((e) => e.t))].sort((a, b) => a - b);
+  for (const e of evs) {
+    if (e.type !== 'tap' || e.partner || e.triple) continue;
+    const k = groupTimes.indexOf(e.t);
+    const gp = k > 0 ? e.t - groupTimes[k - 1] : 9;
+    const gn = k < groupTimes.length - 1 ? groupTimes[k + 1] - e.t : 9;
+    const m = Math.min(gp, gn);
+    const mb = m / beatLen; // spacing in beats: 16ths & faster -> micro, 8ths -> half
+    if (diff !== 'normal' && (m < 0.155 || (mb < 0.3 && m < 0.26))) e.size = 'micro';
+    else if (m < 0.46 && (mb < 0.56 || m < P.halfGap) && (diff !== 'normal' || e.slot.level >= 2)) e.size = 'half';
+  }
+
   // ---------- 8. micro-align each note group to the actual transient (±18 ms) ----------
   for (const e of evs) {
     const fr = timeToFrame(f, e.t);
@@ -371,6 +480,8 @@ export function generateChart(res: AnalysisResult, songId: string, diff: Difficu
     const n: ChartNote = { t: r4(e.t), lane: e.lane, type: e.type };
     if (e.type === 'hold') n.dur = r4(e.dur ?? 0.5);
     if (e.type === 'swipe') n.dir = e.dir ?? 'up';
+    if (e.type === 'tap' && e.size && e.size !== 'regular') n.size = e.size;
+    if (e.type === 'hold' && e.path?.length) n.path = e.path;
     notes.push(n);
     if (e.partner) {
       const p: ChartNote = { t: r4(e.t), lane: e.partner.lane, type: e.partner.type };

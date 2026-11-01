@@ -53,7 +53,11 @@ export function DetailsScreen({ songId }: { songId: string }) {
   };
   const c = chart?.charts[diff];
   const counts = c ? {
-    taps: c.notes.filter((n) => n.type === 'tap').length,
+    taps: c.notes.filter((n) => n.type === 'tap' && !n.size).length,
+    half: c.notes.filter((n) => n.size === 'half').length,
+    micro: c.notes.filter((n) => n.size === 'micro').length,
+    diag: c.notes.filter((n) => n.type === 'swipe' && (n.dir?.length ?? 0) > 5).length,
+    paths: c.notes.filter((n) => n.path?.length).length,
     holds: c.notes.filter((n) => n.type === 'hold').length,
     swipes: c.notes.filter((n) => n.type === 'swipe').length,
     chords: new Set(c.notes.map((n) => n.t).filter((t, i, a) => a.indexOf(t) !== i)).size,
@@ -109,8 +113,10 @@ export function DetailsScreen({ songId }: { songId: string }) {
             {counts && (
               <div className="note-mix">
                 <span><i className="dot tap" />{counts.taps} taps</span>
-                <span><i className="dot hold" />{counts.holds} holds</span>
-                <span><i className="dot swipe" />{counts.swipes} swipes</span>
+                {counts.half > 0 && <span><i className="dot tap half" />{counts.half} half</span>}
+                {counts.micro > 0 && <span><i className="dot tap micro" />{counts.micro} micro</span>}
+                <span><i className="dot hold" />{counts.holds} holds{counts.paths ? ` (${counts.paths} switch/rail)` : ''}</span>
+                <span><i className="dot swipe" />{counts.swipes} swipes{counts.diag ? ` (${counts.diag} diagonal)` : ''}</span>
                 <span><i className="dot chord" />{counts.chords} chords</span>
               </div>
             )}

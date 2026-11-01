@@ -635,3 +635,18 @@ input[type='range']::-moz-range-thumb { width: 22px; height: 22px; border-radius
 @media (hover: none) {
   .btn:hover, .tile:hover, .song-card-main:hover, .car-card:hover { transform: none; }
 }
+.path-editor { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.path-row { display: grid; grid-template-columns: 1fr 90px 80px 34px; gap: 6px; align-items: center; }
+.path-row input, .path-row select { height: 34px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,.3); color: #fff; padding: 0 8px; font: 600 13px var(--font); }
+.tut-caption { position: absolute; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); width: min(560px, 92vw); padding: 14px 20px; border-radius: 18px; text-align: center; display: flex; flex-direction: column; gap: 4px; background: rgba(12,4,34,.82); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; animation: popIn .35s cubic-bezier(.2,1.4,.4,1) both; z-index: 4; }
+.tut-caption small { font: 800 11px var(--font); letter-spacing: .2em; color: var(--accent-2); }
+.tut-caption b { font: 400 22px var(--display); }
+.tut-caption span { font-size: 14px; color: var(--ink-2); line-height: 1.4; }
+@media (max-aspect-ratio: 1/1) { .tut-caption { top: auto; bottom: calc(var(--safe-b) + 10px); padding: 10px 14px; } .tut-caption b { font-size: 17px; } .tut-caption span { font-size: 13px; } }
+@media (min-width: 900px) and (min-aspect-ratio: 4/3) { .tut-caption { top: auto; bottom: calc(var(--safe-b) + 24px); left: 24px; transform: none; width: min(360px, 26vw); text-align: left; } }
+.results-types { display: flex; flex-wrap: wrap; gap: 8px; animation: fadeUp .5s .5s both; }
+.results-types span { font-size: 12px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: var(--ink-2); }
+.results-types span.clean { border-color: rgba(77,243,255,.5); color: #fff; }
+.results-types b { color: #fff; margin-right: 2px; }
+.dot.tap.half { height: 6px; vertical-align: 1px; }
+.dot.tap.micro { height: 3px; vertical-align: 3px; }

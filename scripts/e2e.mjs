@@ -65,6 +65,22 @@ async function bot(page, { method = 'inject', swipeMode = 'chord', maxSeconds = 
               if (touch) { g.testInput('touch', n.lane, n.dir, ts); g.testInput('swipe', n.lane, n.dir, ts + 6); }
               else if (swipeMode === 'chord') { g.testInput('down', n.lane, null, ts); g.testInput('dir', n.lane, n.dir, ts + 8); }
               scheduleUp(n.lane, ts + 40);
+            } else if (n.type === 'hold' && n.path && n.path.length) {
+              // switch / rail hold: move to each new lane at its transition time
+              g.testInput(touch ? 'touch' : 'down', n.lane, null, ts);
+              let cur = n.lane;
+              const pts = [...n.path].sort((a, b) => a.t - b.t);
+              for (const p of pts) {
+                const from = cur, to = p.lane;
+                const at = g.perfAt(p.t + (p.slide || 0) * 0.5);
+                later(at - 20, () => {
+                  if (touch) g.testInput('slide', from, null, at, to);
+                  else { flush(to); g.testInput('down', to, null, at); g.testInput('up', from, null, at + 25); }
+                });
+                cur = to;
+              }
+              const endLane = cur;
+              later(g.perfAt(n.t + n.dur) - 30, () => scheduleUp(endLane, g.perfAt(n.t + n.dur) + 5));
             } else {
               g.testInput(touch ? 'touch' : 'down', n.lane, null, ts);
               scheduleUp(n.lane, n.type === 'hold' ? g.perfAt(n.t + n.dur) + 5 : ts + 40);
@@ -72,7 +88,7 @@ async function bot(page, { method = 'inject', swipeMode = 'chord', maxSeconds = 
           }
         }
         const done = g.isFinished || (performance.now() - t0) / 1000 > maxSeconds;
-        if (done) { setTimeout(() => resolve({ counts: g.session.counts, score: g.session.score, max: g.session.max, total: notes.length, judged: g.session.judgedCount, failed: g.session.failed, deltas: notes.filter((n) => n.delta !== undefined).map((n) => n.delta) }), 300); return; }
+        if (done) { setTimeout(() => resolve({ byType: g.session.result().byType, counts: g.session.counts, score: g.session.score, max: g.session.max, total: notes.length, judged: g.session.judgedCount, failed: g.session.failed, deltas: notes.filter((n) => n.delta !== undefined).map((n) => n.delta) }), 300); return; }
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -235,6 +251,23 @@ try {
     await page.waitForTimeout(200);
     const undone = await page.$eval('.panel-col:nth-child(2) p', (e) => e.textContent);
     log('editor: undo', undone !== after);
+    // interactive tutorial: every note type, played through the real input handlers (keyboard path)
+    await page.goto(URL);
+    await page.waitForSelector('.press-start');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.home');
+    await page.click('.tile:has-text("Tutorial")');
+    await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > -2 && window.__fsGame.session, null, { timeout: 20000 });
+    const tutP = bot(page, { maxSeconds: 120 });
+    await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 17.3, null, { timeout: 60000 });
+    await page.screenshot({ path: `${OUT}/13-tutorial-1080p.png` });
+    await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 44.6, null, { timeout: 60000 });
+    await page.screenshot({ path: `${OUT}/13b-tutorial-switch-1080p.png` });
+    await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 52.6, null, { timeout: 60000 });
+    await page.screenshot({ path: `${OUT}/13c-tutorial-rail-1080p.png` });
+    const tut = await tutP;
+    log('tutorial (taps, half, micro, chords, holds, swipes, diagonals, switch & rail holds): all clean (keyboard)',
+      tut.counts.miss === 0 && tut.counts.holdBreaks === 0, JSON.stringify(tut.byType) + ` P+ ${tut.counts.perfectPlus}`);
     log('no uncaught page errors (desktop)', errs.length === 0, errs.slice(0, 3).join(' | '));
     await ctx.close();
   }
@@ -266,7 +299,7 @@ try {
     await page.waitForTimeout(32000);
     await page.screenshot({ path: `${OUT}/21-gameplay-1440p.png` });
     const r = await p;
-    log('real song (Moms Calling Funk, Extreme, 40 s) bot: no misses', r.counts.miss === 0, `P+ ${r.counts.perfectPlus} P ${r.counts.perfect} G ${r.counts.great}`);
+    log('real song (Moms Calling Funk, Extreme, 40 s) bot: no misses', r.counts.miss === 0 && r.counts.holdBreaks === 0, `P+ ${r.counts.perfectPlus} P ${r.counts.perfect} G ${r.counts.great} M ${r.counts.miss} holdBreaks ${r.counts.holdBreaks} ${JSON.stringify(r.byType)}`);
     await ctx.close();
   }
   // ---------------- 1366x768 laptop ----------------
@@ -333,6 +366,19 @@ try {
     const c = await page.evaluate(() => window.__fsGame.session.counts);
     const hits = c.perfectPlus + c.perfect + c.great;
     log(`${label}: real touch events register on the right lanes`, hits > 0, `sent ${sent}, hits ${hits}, misses ${c.miss} (CDP round-trips make timing approximate)`);
+    if (label === 'iphone-portrait') {
+      await page.goto(URL);
+      await page.waitForSelector('.press-start');
+      await page.touchscreen.tap(100, 200);
+      await page.waitForSelector('.home');
+      await page.tap('.tile:has-text("Tutorial")');
+      await page.waitForFunction(() => window.__fsGame && window.__fsGame.session && window.__fsGame.songTime > -2, null, { timeout: 20000 });
+      const tt = bot(page, { method: 'touch', maxSeconds: 120 });
+      await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 50, null, { timeout: 90000 });
+      await page.screenshot({ path: `${OUT}/44-${label}-tutorial-rail.png` });
+      const tr2 = await tt;
+      log(`${label}: tutorial via touch (incl. diagonal flicks, switch & rail slides): all clean`, tr2.counts.miss === 0 && tr2.counts.holdBreaks === 0, JSON.stringify(tr2.byType));
+    }
     log(`${label}: no page errors`, errs.length === 0, errs.slice(0, 2).join(' | '));
     await ctx.close();
   }

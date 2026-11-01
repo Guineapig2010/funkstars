@@ -8,6 +8,7 @@ import { playSfx } from '../../audio/sfx';
 import { background } from '../../game/background';
 import { notifyLevelUp } from './Play';
 import { MEDAL_INFO } from '../../game/scoring';
+import { CATEGORY_LABEL, type NoteCategory } from '../../game/session';
 
 type ResultsRoute = Extract<Route, { name: 'results' }>;
 
@@ -84,6 +85,13 @@ export function ResultsScreen({ route }: { route: ResultsRoute }) {
             <Stat label="Miss" value={r.counts.miss} color="#ff3b3b" />
             <Stat label="Holds broken" value={r.counts.holdBreaks} color="#ff9a1f" />
           </div>
+          {r.byType && Object.keys(r.byType).length > 0 && (
+            <div className="results-types">
+              {(Object.entries(r.byType) as [NoteCategory, [number, number]][]).map(([k, [hit, tot]]) => (
+                <span key={k} className={hit === tot ? 'clean' : ''}><b>{hit}/{tot}</b> {CATEGORY_LABEL[k]}</span>
+              ))}
+            </div>
+          )}
           <div className="results-xp">
             <span>+{o.xpGained} XP</span>
             <div className="xpbar big"><span style={{ width: `${lv.pct * 100}%` }} /></div>

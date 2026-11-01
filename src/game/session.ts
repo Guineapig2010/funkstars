@@ -1,10 +1,12 @@
-// Game rules engine: hit detection, holds, swipes, combo, score. Pure logic, no DOM, fully testable.
-// All times are song seconds already corrected for audio/input offsets.
+// Game rules engine: hit detection, holds (incl. switch / rail holds), swipes (4 + diagonal),
+// combo and score. Pure logic, no DOM, fully testable. All times are song seconds already
+// corrected for audio/input offsets. Tile size never affects timing windows.
 import type { ChartNote, GameMode, Judgment, Lane, SwipeDir } from '../types';
 import {
-  HOLD_RATE, HOLD_RELEASE_TOLERANCE, POINTS, WINDOWS, accuracyOf, judge, maxScore, medalsFor,
+  HOLD_RATE, HOLD_RELEASE_TOLERANCE, POINTS, TRANSITION_POINTS, WINDOWS, accuracyOf, judge, maxScore, medalsFor,
   multiplierFor, starsFor, type Counts, type Medal,
 } from './scoring';
+import { TRANSITION_WINDOW, combineDirs, dirParts, gestureMatches, holdKind, isDiagonal, sizeOf, sortedPath } from './notes';
 
 export type SwipeMode = 'chord' | 'direction' | 'lane';
 
@@ -15,15 +17,32 @@ export interface RNote extends ChartNote {
   holdState?: 'pending' | 'holding' | 'done' | 'broken' | 'missed';
   holdProgress?: number;
   swipePendingAt?: number;
+  /** Diagonal keyboard swipes: direction components received so far. */
+  dirsGot?: SwipeDir[];
+  /** Switch/rail holds: lane currently held and index of the next transition. */
+  curLane?: Lane;
+  pathIdx?: number;
 }
 
 export interface SessionEvents {
   onJudge?: (n: RNote, j: Judgment, delta: number) => void;
   onHoldStart?: (n: RNote) => void;
   onHoldEnd?: (n: RNote, completed: boolean) => void;
+  onTransition?: (n: RNote, lane: Lane) => void;
   onComboBreak?: (combo: number) => void;
   onFail?: (n: RNote) => void;
   onMilestone?: (combo: number) => void;
+}
+
+export type NoteCategory = 'tap' | 'half' | 'micro' | 'hold' | 'switch' | 'rail' | 'swipe' | 'diagonal';
+export const CATEGORY_LABEL: Record<NoteCategory, string> = {
+  tap: 'Taps', half: 'Half tiles', micro: 'Microtiles', hold: 'Holds', switch: 'Switch holds', rail: 'Rail holds', swipe: 'Swipes', diagonal: 'Diagonal swipes',
+};
+export function categoryOf(n: ChartNote): NoteCategory {
+  if (n.type === 'hold') return holdKind(n);
+  if (n.type === 'swipe') return isDiagonal(n.dir) ? 'diagonal' : 'swipe';
+  const s = sizeOf(n);
+  return s === 'regular' ? 'tap' : s;
 }
 
 export interface SessionResult {
@@ -38,15 +57,18 @@ export interface SessionResult {
   completed: boolean;
   failed: boolean;
   totalNotes: number;
+  /** Per note-category totals: [cleanly hit, total]. Holds count as clean only when completed. */
+  byType: Partial<Record<NoteCategory, [number, number]>>;
 }
 
 export class GameSession {
   readonly notes: RNote[];
   private byLane: RNote[][] = [[], [], []];
   private laneNext = [0, 0, 0];
-  private holding: (RNote | null)[] = [null, null, null];
+  private holds: RNote[] = [];
+  private down = [0, 0, 0];
   private pendingSwipe: RNote[] = [];
-  private lastDir: { dir: SwipeDir; t: number } | null = null;
+  private recentDirs: { dir: SwipeDir; t: number }[] = [];
   private autoMissIdx = 0;
 
   score = 0;
@@ -75,9 +97,8 @@ export class GameSession {
     for (const n of this.notes) m = Math.max(m, n.t + (n.dur ?? 0));
     return m;
   }
-  get finished() {
-    return this.failed || (this.notes.every((n) => n.judged !== null) && this.holding.every((h) => !h));
-  }
+  get finished() { return this.failed || (this.notes.every((n) => n.judged !== null) && this.holds.length === 0); }
+  get activeHolds(): readonly RNote[] { return this.holds; }
 
   /** Earliest unjudged note in a lane that is inside the hittable window at time t. */
   private candidate(lane: Lane, t: number): RNote | null {
@@ -95,21 +116,31 @@ export class GameSession {
     return null;
   }
 
+  /** Is this lane press the player arriving on a switch / rail transition? */
+  private transitionTarget(lane: Lane, t: number): RNote | null {
+    for (const h of this.holds) {
+      const p = sortedPath(h)[h.pathIdx ?? 0];
+      if (p && p.lane === lane && t >= p.t - TRANSITION_WINDOW && t <= p.t + (p.slide ?? 0) + TRANSITION_WINDOW) return h;
+    }
+    return null;
+  }
+
   pressLane(lane: Lane, t: number): RNote | null {
+    this.down[lane]++;
     if (this.failed) return null;
+    if (this.transitionTarget(lane, t)) { this.updateHolds(t); return null; }
     const n = this.candidate(lane, t);
     if (!n) return null;
     if (n.type === 'swipe') {
       if (this.swipeMode === 'lane') { this.hit(n, t - n.t); return n; }
       if (this.swipeMode === 'direction') return null;
-      if (this.lastDir && t - this.lastDir.t <= this.chordWindow) {
-        const ok = this.lastDir.dir === n.dir;
-        this.lastDir = null;
-        if (ok) this.hit(n, t - n.t); else this.miss(n);
-        return n;
-      }
+      const dir = this.recentDirection(t, n.dir);
+      if (dir === 'match') { this.recentDirs = []; this.hit(n, t - n.t); return n; }
+      if (dir === 'wrong') { this.recentDirs = []; this.miss(n); return n; }
       if (n.swipePendingAt === undefined) {
         n.swipePendingAt = t;
+        n.dirsGot = this.recentDirs.filter((r) => t - r.t <= this.chordWindow).map((r) => r.dir);
+        this.recentDirs = [];
         this.pendingSwipe.push(n);
       }
       return n;
@@ -117,24 +148,50 @@ export class GameSession {
     this.hit(n, t - n.t);
     if (n.type === 'hold' && n.judged !== 'miss') {
       n.holdState = 'holding';
-      this.holding[lane] = n;
+      n.curLane = n.lane;
+      n.pathIdx = 0;
+      this.holds.push(n);
       this.events.onHoldStart?.(n);
     }
     return n;
   }
 
-  releaseLane(lane: Lane, t: number): void {
-    const h = this.holding[lane];
-    if (!h) return;
-    const end = h.t + (h.dur ?? 0);
-    this.holding[lane] = null;
-    if (t >= end - HOLD_RELEASE_TOLERANCE) this.completeHold(h);
-    else {
-      h.holdState = 'broken';
-      this.counts.holdBreaks++;
-      this.breakCombo();
-      this.events.onHoldEnd?.(h, false);
+  /** Directions pressed just before a lane press: complete match, wrong, or still partial. */
+  private recentDirection(t: number, target?: SwipeDir): 'match' | 'wrong' | 'partial' | 'none' {
+    const recent = this.recentDirs.filter((r) => t - r.t <= this.chordWindow).map((r) => r.dir);
+    if (!recent.length || !target) return 'none';
+    if (recent.includes(target)) return 'match';
+    if (isDiagonal(target)) {
+      if (recent.length >= 2 && combineDirs(recent[recent.length - 2], recent[recent.length - 1]) === target) return 'match';
+      const parts = dirParts(target);
+      return recent.every((d) => parts.includes(d)) ? 'partial' : 'wrong';
     }
+    return 'wrong';
+  }
+
+  releaseLane(lane: Lane, t: number): void {
+    if (this.down[lane] > 0) this.down[lane]--;
+    if (this.down[lane] > 0) return;
+    for (const h of [...this.holds]) {
+      if (h.curLane !== lane) continue;
+      const end = h.t + (h.dur ?? 0);
+      if (t >= end - HOLD_RELEASE_TOLERANCE) { this.finishHold(h, true); continue; }
+      // lifting during a transition window is the player moving to the next lane
+      const p = sortedPath(h)[h.pathIdx ?? 0];
+      if (p && t >= p.t - TRANSITION_WINDOW) continue;
+      this.finishHold(h, false);
+    }
+  }
+
+  /** A touch dragged from one lane into another. Returns true if it continued a switch/rail hold. */
+  slide(from: Lane, to: Lane, t: number): boolean {
+    const h = this.holds.find((x) => x.curLane === from);
+    const p = h ? sortedPath(h)[h.pathIdx ?? 0] : undefined;
+    if (!h || !p || p.lane !== to || t < p.t - TRANSITION_WINDOW * 2) return false;
+    this.down[to]++;
+    if (this.down[from] > 0) this.down[from]--;
+    this.updateHolds(t);
+    return true;
   }
 
   /** Keyboard / gamepad direction input (keyboard swipe system). */
@@ -143,53 +200,59 @@ export class GameSession {
     const hits: RNote[] = [];
     if (this.swipeMode === 'chord') {
       if (this.pendingSwipe.length) {
-        for (const n of this.pendingSwipe.splice(0)) {
+        for (const n of [...this.pendingSwipe]) {
           if (n.judged !== null) continue;
-          if (n.dir === dir) this.hit(n, (n.swipePendingAt ?? t) - n.t); else this.miss(n);
-          hits.push(n);
+          const target = n.dir ?? 'up';
+          const got = [...(n.dirsGot ?? []), dir];
+          n.dirsGot = got;
+          const ok = got.includes(target) || (isDiagonal(target) && got.length >= 2 && combineDirs(got[got.length - 2], got[got.length - 1]) === target);
+          if (ok) { this.hit(n, (n.swipePendingAt ?? t) - n.t); hits.push(n); }
+          else if (!isDiagonal(target) || !got.every((d) => dirParts(target).includes(d))) { this.miss(n); hits.push(n); }
+          else continue; // first half of a diagonal
+          this.pendingSwipe = this.pendingSwipe.filter((x) => x !== n);
         }
         return hits;
       }
-      this.lastDir = { dir, t };
+      this.recentDirs.push({ dir, t });
+      if (this.recentDirs.length > 4) this.recentDirs.shift();
       return hits;
     }
     if (this.swipeMode === 'direction') {
-      // every swipe note at the nearest time with this direction
-      let best: RNote | null = null;
+      this.recentDirs = [...this.recentDirs.filter((r) => t - r.t <= this.chordWindow), { dir, t }];
+      const combo = this.recentDirs.length >= 2 ? combineDirs(this.recentDirs[this.recentDirs.length - 2].dir, dir) : null;
       for (const n of this.notes) {
-        if (n.judged !== null || n.type !== 'swipe' || n.dir !== dir) continue;
+        if (n.judged !== null || n.type !== 'swipe') continue;
         const d = t - n.t;
         if (d < -WINDOWS.great) break;
-        if (d <= WINDOWS.miss) { best = n; break; }
+        if (d > WINDOWS.miss) continue;
+        if (n.dir === dir || (combo && n.dir === combo)) { this.hit(n, d); hits.push(n); this.recentDirs = []; break; }
       }
-      if (best) { this.hit(best, t - best.t); hits.push(best); }
     }
     return hits;
   }
 
-  /** Touch / mouse swipe gesture: lane + direction, timed at touch-down. */
-  swipeGesture(lane: Lane, dir: SwipeDir, downT: number): RNote | null {
+  /** Touch / mouse swipe gesture (any angle), timed at touch-down. */
+  swipeGesture(lane: Lane, dx: number, dy: number, downT: number): RNote | null {
     if (this.failed) return null;
     const n = this.candidate(lane, downT);
     if (!n || n.type !== 'swipe') return null;
-    if (n.dir === dir) this.hit(n, downT - n.t); else this.miss(n);
+    if (gestureMatches(n.dir ?? 'up', dx, dy)) this.hit(n, downT - n.t); else this.miss(n);
     return n;
   }
 
   /** Touch-down on a lane: taps & holds hit immediately; swipe notes wait for the gesture. */
   touchDown(lane: Lane, t: number): { note: RNote | null; awaitingSwipe: boolean } {
-    const n = this.candidate(lane, t);
-    if (!n) return { note: null, awaitingSwipe: false };
-    if (n.type === 'swipe') {
-      if (this.swipeMode === 'lane') { this.hit(n, t - n.t); return { note: n, awaitingSwipe: false }; }
-      return { note: n, awaitingSwipe: true };
+    if (!this.failed && !this.transitionTarget(lane, t)) {
+      const n = this.candidate(lane, t);
+      if (n && n.type === 'swipe' && this.swipeMode !== 'lane') { this.down[lane]++; return { note: n, awaitingSwipe: true }; }
     }
     return { note: this.pressLane(lane, t), awaitingSwipe: false };
   }
 
+  isLaneDown(l: Lane) { return this.down[l] > 0; }
+
   update(t: number): void {
     if (this.failed) return;
-    // pending keyboard swipes that never got a direction
     if (this.pendingSwipe.length) {
       this.pendingSwipe = this.pendingSwipe.filter((n) => {
         if (n.judged !== null) return false;
@@ -197,7 +260,7 @@ export class GameSession {
         return true;
       });
     }
-    // auto-miss
+    if (this.recentDirs.length) this.recentDirs = this.recentDirs.filter((r) => t - r.t <= this.chordWindow * 2);
     while (this.autoMissIdx < this.notes.length && this.notes[this.autoMissIdx].judged !== null) this.autoMissIdx++;
     for (let i = this.autoMissIdx; i < this.notes.length; i++) {
       const n = this.notes[i];
@@ -205,31 +268,56 @@ export class GameSession {
       if (n.judged === null && !(n.swipePendingAt !== undefined && t - n.swipePendingAt <= this.chordWindow)) this.miss(n);
       if (this.failed) return;
     }
-    // holds
-    for (let l = 0; l < 3; l++) {
-      const h = this.holding[l];
-      if (!h) continue;
+    this.updateHolds(t);
+  }
+
+  private updateHolds(t: number) {
+    for (const h of [...this.holds]) {
       const end = h.t + (h.dur ?? 0);
+      // transitions
+      const path = sortedPath(h);
+      let p = path[h.pathIdx ?? 0];
+      while (p && t >= p.t - TRANSITION_WINDOW && this.down[p.lane] > 0) {
+        h.curLane = p.lane;
+        h.pathIdx = (h.pathIdx ?? 0) + 1;
+        this.score += TRANSITION_POINTS * this.multiplier;
+        this.events.onTransition?.(h, p.lane);
+        p = path[h.pathIdx];
+      }
+      if (p && t > p.t + (p.slide ?? 0) + TRANSITION_WINDOW) { this.finishHold(h, false); continue; }
+      const inWindow = p && t >= p.t - TRANSITION_WINDOW;
+      if (this.down[h.curLane ?? h.lane] <= 0 && !inWindow) {
+        if (t >= end - HOLD_RELEASE_TOLERANCE) this.finishHold(h, true); else this.finishHold(h, false);
+        continue;
+      }
       const prog = Math.min(1, Math.max(0, (t - h.t) / (h.dur || 1)));
       const prev = h.holdProgress ?? 0;
       if (prog > prev) {
-        const pts = HOLD_RATE * (h.dur ?? 0) * (prog - prev) * this.multiplier;
-        this.score += pts;
+        this.score += HOLD_RATE * (h.dur ?? 0) * (prog - prev) * this.multiplier;
         h.holdProgress = prog;
       }
-      if (t >= end) { this.holding[l] = null; this.completeHold(h); }
+      if (t >= end) this.finishHold(h, true);
     }
   }
 
-  isHolding(lane: Lane) { return this.holding[lane] !== null; }
+  isHolding(lane: Lane) { return this.holds.some((h) => h.curLane === lane); }
 
-  private completeHold(h: RNote) {
-    const rest = 1 - (h.holdProgress ?? 0);
-    if (rest > 0) this.score += HOLD_RATE * (h.dur ?? 0) * rest * this.multiplier;
-    h.holdProgress = 1;
-    h.holdState = 'done';
-    this.score = Math.round(this.score);
-    this.events.onHoldEnd?.(h, true);
+  private finishHold(h: RNote, completed: boolean) {
+    this.holds = this.holds.filter((x) => x !== h);
+    if (completed) {
+      const rest = 1 - (h.holdProgress ?? 0);
+      if (rest > 0) this.score += HOLD_RATE * (h.dur ?? 0) * rest * this.multiplier;
+      // award any transitions the player was already in position for
+      h.holdProgress = 1;
+      h.holdState = 'done';
+      this.score = Math.round(this.score);
+      this.events.onHoldEnd?.(h, true);
+    } else {
+      h.holdState = 'broken';
+      this.counts.holdBreaks++;
+      this.breakCombo();
+      this.events.onHoldEnd?.(h, false);
+    }
   }
 
   private hit(n: RNote, delta: number) {
@@ -265,7 +353,16 @@ export class GameSession {
   result(): SessionResult {
     const completed = !this.failed;
     const total = this.notes.length;
-    const score = Math.round(this.score);
+    const score = Math.min(this.max, Math.round(this.score));
+    const byType: SessionResult['byType'] = {};
+    for (const n of this.notes) {
+      const c = categoryOf(n);
+      const e = byType[c] ?? [0, 0];
+      e[1]++;
+      const clean = n.judged !== null && n.judged !== 'miss' && (n.type !== 'hold' || n.holdState === 'done');
+      if (clean) e[0]++;
+      byType[c] = e;
+    }
     return {
       score,
       maxScore: this.max,
@@ -278,6 +375,7 @@ export class GameSession {
       completed,
       failed: this.failed,
       totalNotes: total,
+      byType,
     };
   }
 }

@@ -1,6 +1,7 @@
 // Canvas2D gameplay renderer: perspective three-lane highway, notes, holds, swipes, particles,
 // judgement feedback and the responsive HUD (side panels on wide screens, top bar on portrait).
-import type { Judgment, Lane } from '../types';
+import type { Judgment, Lane, TileSize } from '../types';
+import { DIR_VEC, SIZE_SCALE, holdLanePos, sizeOf, sortedPath } from './notes';
 import type { RNote, GameSession } from './session';
 import { Particles } from './particles';
 import { glowSprite, noteSprite, rgba, roundRect, textSprite, lighten, type Sprite } from './sprites';
@@ -150,8 +151,9 @@ export class Renderer {
   zOf(dt: number) { return dt / this.vis; }
 
   // ---------- events from the controller ----------
-  onJudge(lane: Lane, j: Judgment, delta: number, type: string) {
+  onJudge(lane: Lane, j: Judgment, delta: number, type: string, size: TileSize = 'regular') {
     const x = this.xAt(this.laneU(lane), 0);
+    const k = size === 'micro' ? 0.5 : size === 'half' ? 0.75 : 1;
     const y = this.hitY;
     const color = this.opts.laneColors[lane];
     if (j !== 'miss') {
@@ -159,11 +161,11 @@ export class Renderer {
       this.flashColor[lane] = j === 'perfectPlus' ? '#ffffff' : color;
       this.pop[lane] = 1;
       const big = j === 'perfectPlus';
-      const s = this.laneW / 120;
-      this.particles.burst(x, y, big ? lighten(color, 0.35) : color, big ? 14 : 8, 520 * s, 9 * s, { up: true, sparks: big ? 12 : 6 });
+      const s = (this.laneW / 120) * (0.6 + 0.4 * k);
+      this.particles.burst(x, y, big ? lighten(color, 0.35) : color, Math.round((big ? 14 : 8) * k), 520 * s, 9 * s, { up: true, sparks: Math.round((big ? 12 : 6) * k) });
       if (big) this.particles.burst(x, y, '#fff3b0', 4, 300 * s, 6 * s, { up: true, sparks: 6, spread: 1.2 });
       if (type === 'swipe') this.particles.burst(x, y - this.noteH, '#ffffff', 10, 900 * s, 7 * s, { up: true, sparks: 14, spread: 0.9 });
-      this.rings.push({ x, y, t0: this.clock, color: big ? '#ffffff' : color, r: this.laneW * (big ? 0.5 : 0.4), dur: 0.3 });
+      this.rings.push({ x, y, t0: this.clock, color: big ? '#ffffff' : color, r: this.laneW * (big ? 0.5 : 0.4) * (0.6 + 0.4 * k), dur: 0.3 });
       this.edge[lane === 0 ? 0 : lane === 2 ? 1 : this.edge[0] > this.edge[1] ? 1 : 0] = Math.min(1, 0.35 + this.edge[0] * 0.2);
       this.comboPop = 1;
     } else {
@@ -383,6 +385,18 @@ export class Renderer {
       g.lineWidth = pressed ? 3 : 2;
       g.strokeStyle = pressed ? lighten(c, 0.5) : rgba(c, 0.75);
       g.stroke();
+      if (this.targetHint[l] > 0.02) {
+        // next lane of a switch / rail hold: pulsing target outline
+        const k = this.targetHint[l];
+        const pulse = 0.5 + 0.5 * Math.sin(this.clock * 18);
+        roundRect(g, x - w * (0.55 + 0.05 * pulse), this.hitY - h * (0.6 + 0.08 * pulse), w * (1.1 + 0.1 * pulse), h * (1.2 + 0.16 * pulse), h * 0.6);
+        g.lineWidth = 3;
+        g.setLineDash([8, 6]);
+        g.strokeStyle = `rgba(255,255,255,${0.35 + 0.6 * k})`;
+        g.stroke();
+        g.setLineDash([]);
+        this.targetHint[l] *= Math.exp(-dt * 6);
+      }
       if (pressed || this.pop[l] > 0.05) {
         g.globalCompositeOperation = 'lighter';
         g.globalAlpha = Math.max(pressed ? 0.5 : 0, this.pop[l]);
@@ -408,64 +422,156 @@ export class Renderer {
     }
   }
 
-  private sprite(kind: 'tap' | 'hold' | 'swipe', lane: number, dir?: string) {
-    const color = kind === 'swipe' ? this.opts.swipeColor : this.opts.laneColors[lane];
-    const key = `${kind}|${color}|${dir ?? ''}|${this.opts.skin}`;
+  private sprite(kind: 'tap' | 'hold' | 'swipe', lane: number, dir?: string, size: TileSize = 'regular') {
+    const color = kind === 'swipe' ? (dir && dir.length > 5 ? '#ffd23f' : this.opts.swipeColor) : this.opts.laneColors[lane];
+    const key = `${kind}|${color}|${dir ?? ''}|${this.opts.skin}|${size}`;
     let sp = this.sprites.get(key);
     if (!sp) {
-      sp = noteSprite(this.opts.skin, color, this.noteW * this.dpr, this.noteH * this.dpr, kind, dir as never);
+      sp = noteSprite(this.opts.skin, color, this.noteW * this.dpr, this.noteH * SIZE_SCALE[size] * this.dpr, kind, dir as never, size);
       this.sprites.set(key, sp);
     }
     return sp;
   }
 
+  onTransition(lane: Lane, _n: RNote) {
+    const x = this.xAt(this.laneU(lane), 0);
+    const s = this.laneW / 120;
+    this.particles.burst(x, this.hitY, '#ffffff', 8, 520 * s, 7 * s, { up: true, sparks: 10 });
+    this.rings.push({ x, y: this.hitY, t0: this.clock, color: this.opts.laneColors[lane], r: this.laneW * 0.55, dur: 0.3 });
+    this.flash[lane] = 1;
+    this.flashColor[lane] = '#ffffff';
+    this.switchPop = { lane, t0: this.clock };
+  }
+  private switchPop: { lane: number; t0: number } | null = null;
+
+  /** Hold body (plain, switch or rail), drawn as perspective ribbons following the hold's lane path. */
   private drawHolds(s: FrameState) {
     const g = this.g;
     const end = s.t + this.vis * 1.05;
+    const half = (1 / 3) * 0.42;
     for (let i = s.firstVisible; i < s.notes.length; i++) {
       const n = s.notes[i];
       if (n.t > end) break;
       if (n.type !== 'hold' || !n.dur) continue;
       const tail = n.t + n.dur;
       if (tail < s.t - 0.3) continue;
+      if (n.holdState === 'done') continue;
       const holding = n.holdState === 'holding';
       const dead = n.holdState === 'broken' || n.holdState === 'missed';
-      if (n.holdState === 'done') continue;
-      const zHead = holding ? 0 : this.zOf(n.t - s.t);
-      const zTail = Math.min(1.02, this.zOf(tail - s.t));
-      if (zTail < this.zBottom) continue;
-      const u = this.laneU(n.lane);
-      const half = (1 / 3) * 0.42;
-      const steps = 10;
-      const c = this.opts.laneColors[n.lane];
-      g.beginPath();
-      for (let k = 0; k <= steps; k++) { const z = zHead + ((zTail - zHead) * k) / steps; g.lineTo(this.xAt(u - half, z), this.yAt(z)); }
-      for (let k = steps; k >= 0; k--) { const z = zHead + ((zTail - zHead) * k) / steps; g.lineTo(this.xAt(u + half, z), this.yAt(z)); }
-      g.closePath();
-      const yH = this.yAt(zHead), yT = this.yAt(zTail);
-      const grd = g.createLinearGradient(0, yT, 0, yH);
-      if (dead) {
-        grd.addColorStop(0, 'rgba(120,120,140,0.1)'); grd.addColorStop(1, 'rgba(120,120,140,0.35)');
-      } else {
-        const a = holding ? 0.85 : 0.55;
-        grd.addColorStop(0, rgba(c, a * 0.35));
-        grd.addColorStop(1, rgba(c, a));
+      const t0 = holding ? s.t : n.t;
+      const tEnd = Math.min(tail, s.t + this.vis * 1.02);
+      if (this.zOf(tail - s.t) < this.zBottom) continue;
+      const path = sortedPath(n);
+      // split into pieces at switch points (instant jumps); rails stay inside one piece
+      const cuts = [t0, ...path.filter((p) => !(p.slide ?? 0) && p.t > t0 && p.t < tEnd).map((p) => p.t), tEnd];
+      const colorAt = (tt: number) => this.opts.laneColors[Math.round(holdLanePos(n, tt))];
+      for (let k = 0; k < cuts.length - 1; k++) {
+        const a = cuts[k], b = cuts[k + 1];
+        if (b <= a) continue;
+        const steps = Math.max(6, Math.ceil(((b - a) / this.vis) * 24));
+        const left: [number, number][] = [], right: [number, number][] = [], mid: [number, number][] = [];
+        for (let j = 0; j <= steps; j++) {
+          const tt = a + ((b - a) * j) / steps - (j === steps && k < cuts.length - 2 ? 1e-4 : 0);
+          const z = this.zOf(tt - s.t);
+          const u = this.laneU(holdLanePos(n, tt + (j === 0 ? 1e-4 : 0)));
+          const y = this.yAt(z);
+          left.push([this.xAt(u - half, z), y]); right.push([this.xAt(u + half, z), y]); mid.push([this.xAt(u, z), y]);
+        }
+        g.beginPath();
+        left.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y)));
+        for (let j = right.length - 1; j >= 0; j--) g.lineTo(right[j][0], right[j][1]);
+        g.closePath();
+        const yH = mid[0][1], yT = mid[mid.length - 1][1];
+        const grd = g.createLinearGradient(0, yT, 0, yH);
+        const c = colorAt((a + b) / 2);
+        if (dead) { grd.addColorStop(0, 'rgba(120,120,140,0.1)'); grd.addColorStop(1, 'rgba(120,120,140,0.35)'); }
+        else { const al = holding ? 0.85 : 0.58; grd.addColorStop(0, rgba(c, al * 0.4)); grd.addColorStop(1, rgba(c, al)); }
+        g.fillStyle = grd;
+        g.fill();
+        g.strokeStyle = dead ? 'rgba(200,200,220,0.25)' : holding ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.65)';
+        g.lineWidth = Math.max(2, this.laneW * 0.04) * (holding ? 1.4 + Math.sin(this.clock * 30) * 0.2 : 1);
+        g.beginPath();
+        mid.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y)));
+        g.stroke();
+        // rail edges glow
+        if (path.some((p) => (p.slide ?? 0) > 0)) {
+          g.strokeStyle = dead ? 'rgba(200,200,220,0.2)' : 'rgba(255,255,255,0.5)';
+          g.lineWidth = 1.5;
+          g.beginPath(); left.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+          g.beginPath(); right.forEach(([x, y], j) => (j ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+        }
       }
-      g.fillStyle = grd;
-      g.fill();
-      // bright core
-      g.strokeStyle = dead ? 'rgba(200,200,220,0.25)' : holding ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)';
-      g.lineWidth = Math.max(2, this.laneW * 0.04) * (holding ? 1.4 + Math.sin(this.clock * 30) * 0.2 : 1);
-      g.beginPath(); g.moveTo(this.xAt(u, zHead), yH); g.lineTo(this.xAt(u, zTail), yT); g.stroke();
-      // tail cap
-      if (zTail <= 1) {
-        const sc = this.scaleAt(zTail);
-        roundRect(g, this.xAt(u, zTail) - this.noteW * 0.42 * sc, yT - this.noteH * 0.18 * sc, this.noteW * 0.84 * sc, this.noteH * 0.36 * sc, this.noteH * 0.18 * sc);
-        g.fillStyle = dead ? 'rgba(160,160,180,0.4)' : lighten(c, 0.4);
+      // switch connectors: a bright bar with chevrons from the old lane to the new one
+      let lane = n.lane;
+      for (const p of path) {
+        const from = lane;
+        lane = p.lane;
+        if ((p.slide ?? 0) > 0) {
+          // rail: chevrons along the slide
+          for (let q = 1; q <= 3; q++) {
+            const tt = p.t + ((p.slide ?? 0) * q) / 4;
+            if (tt < t0 || tt > tEnd) continue;
+            this.chevron(this.laneU(holdLanePos(n, tt)), this.zOf(tt - s.t), p.lane > from ? 1 : -1, dead);
+          }
+          continue;
+        }
+        if (p.t < t0 - 0.05 || p.t > tEnd + 0.01) continue;
+        const z = this.zOf(p.t - s.t);
+        const sc = this.scaleAt(z);
+        const x1 = this.xAt(this.laneU(from), z), x2 = this.xAt(this.laneU(p.lane), z), y = this.yAt(z);
+        const h = this.noteH * 0.42 * sc;
+        roundRect(g, Math.min(x1, x2) - h / 2, y - h / 2, Math.abs(x2 - x1) + h, h, h / 2);
+        const lg = g.createLinearGradient(x1, 0, x2, 0);
+        lg.addColorStop(0, dead ? 'rgba(150,150,170,0.4)' : rgba(this.opts.laneColors[from], 0.9));
+        lg.addColorStop(1, dead ? 'rgba(150,150,170,0.4)' : '#ffffff');
+        g.fillStyle = lg;
+        g.fill();
+        const dir = p.lane > from ? 1 : -1;
+        for (let q = 1; q <= Math.abs(p.lane - from) * 2; q++) {
+          const u = this.laneU(from) + ((this.laneU(p.lane) - this.laneU(from)) * q) / (Math.abs(p.lane - from) * 2 + 1);
+          this.chevron(u, z, dir, dead);
+        }
+        // landing pad on the new lane
+        const lx = x2;
+        roundRect(g, lx - this.noteW * 0.4 * sc, y - this.noteH * 0.3 * sc, this.noteW * 0.8 * sc, this.noteH * 0.6 * sc, this.noteH * 0.3 * sc);
+        g.strokeStyle = dead ? 'rgba(170,170,190,0.5)' : '#ffffff';
+        g.lineWidth = 2.5 * sc;
+        g.stroke();
+      }
+      // tail cap at the final lane
+      const zT = this.zOf(tail - s.t);
+      if (zT <= 1) {
+        const sc = this.scaleAt(zT);
+        const u = this.laneU(holdLanePos(n, tail));
+        roundRect(g, this.xAt(u, zT) - this.noteW * 0.42 * sc, this.yAt(zT) - this.noteH * 0.18 * sc, this.noteW * 0.84 * sc, this.noteH * 0.36 * sc, this.noteH * 0.18 * sc);
+        g.fillStyle = dead ? 'rgba(160,160,180,0.4)' : lighten(colorAt(tail), 0.4);
         g.fill();
       }
-      if (holding) this.holdSparkle(n.lane);
+      if (holding) {
+        const cur = n.curLane ?? n.lane;
+        this.holdSparkle(cur as Lane);
+        // upcoming transition: pulse the target receptor so the movement is readable
+        const next = path[n.pathIdx ?? 0];
+        if (next && next.t - s.t < 0.9) this.targetHint[next.lane] = Math.max(this.targetHint[next.lane], 1 - Math.max(0, next.t - s.t) / 0.9);
+      }
     }
+  }
+  private targetHint = [0, 0, 0];
+
+  private chevron(u: number, z: number, dir: number, dead: boolean) {
+    const g = this.g;
+    const sc = this.scaleAt(z);
+    const x = this.xAt(u, z), y = this.yAt(z);
+    const s = this.noteH * 0.22 * sc;
+    g.strokeStyle = dead ? 'rgba(200,200,220,0.5)' : '#1a0838';
+    g.lineWidth = Math.max(1.5, 3 * sc);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.beginPath();
+    g.moveTo(x - dir * s * 0.6, y - s);
+    g.lineTo(x + dir * s * 0.6, y);
+    g.lineTo(x - dir * s * 0.6, y + s);
+    g.stroke();
   }
 
   private drawNotes(s: FrameState) {
@@ -485,9 +591,10 @@ export class Renderer {
         if (alpha <= 0) continue;
       }
       if (n.type === 'hold' && n.holdState === 'holding') continue;
+      const size = n.type === 'tap' ? sizeOf(n) : 'regular';
       const sc = this.scaleAt(z);
-      const sp = this.sprite(n.type, n.lane, n.dir);
-      const w = this.noteW * sc, h = this.noteH * sc;
+      const sp = this.sprite(n.type, n.lane, n.dir, size);
+      const w = this.noteW * sc, h = this.noteH * SIZE_SCALE[size] * sc;
       const pad = (sp.pad / this.dpr) * sc;
       const x = this.xAt(this.laneU(n.lane), z);
       const y = this.yAt(z);
@@ -496,10 +603,14 @@ export class Renderer {
       if (n.judged === 'miss') g.filter = 'grayscale(1)';
       g.drawImage(sp.img, x - w / 2 - pad, y - h / 2 - pad, w + pad * 2, h + pad * 2);
       if (n.judged === 'miss') g.filter = 'none';
+      if (size !== 'regular' && !n.judged) {
+        // crisp centre line marks the exact timing point of short tiles
+        g.fillStyle = 'rgba(255,255,255,0.95)';
+        g.fillRect(x - w * 0.36, y - Math.max(1, sc), w * 0.72, Math.max(1.5, 2 * sc));
+      }
       if (n.type === 'swipe' && !n.judged) {
-        // animated direction hint trail
         const ph = (this.clock * 2.5) % 1;
-        const d = n.dir === 'down' ? [0, 1] : n.dir === 'left' ? [-1, 0] : n.dir === 'right' ? [1, 0] : [0, -1];
+        const d = DIR_VEC[n.dir ?? 'up'];
         g.globalCompositeOperation = 'lighter';
         g.globalAlpha = (1 - ph) * 0.6 * fadeIn;
         const r = h * 0.55;
@@ -535,7 +646,23 @@ export class Renderer {
     return sp;
   }
 
+  private drawSwitchPop() {
+    const sp = this.switchPop;
+    if (!sp) return;
+    const age = this.clock - sp.t0;
+    if (age > 0.45) { this.switchPop = null; return; }
+    const g = this.g;
+    g.globalAlpha = 1 - age / 0.45;
+    g.font = `400 ${Math.max(12, this.laneW * 0.13)}px Bungee, Outfit, system-ui`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#ffffff';
+    g.fillText('SWITCH!', this.xAt(this.laneU(sp.lane), 0), this.hitY - this.noteH * (1.2 + age * 2));
+    g.globalAlpha = 1;
+  }
+
   private drawPopup(s: FrameState) {
+    this.drawSwitchPop();
     const p = this.popup;
     if (!p) return;
     const age = this.clock - p.t0;

@@ -12,7 +12,9 @@ import { checkPlayable, enforcePlayable, rateLevel } from '../../analysis/rules'
 import { setPlaytestNotes } from './Play';
 import { playSfx } from '../../audio/sfx';
 import { getSettings } from '../../store/settings';
-import { DIFFICULTIES, type ChartNote, type Difficulty, type Lane, type SongChartFile, type SongMeta, type SwipeDir } from '../../types';
+import { DIFFICULTIES, CARDINAL_DIRS, DIAGONAL_DIRS, type ChartNote, type Difficulty, type Lane, type SongChartFile, type SongMeta, type SwipeDir, type TileSize } from '../../types';
+import { DIR_ARROW, SIZE_SCALE, holdLanePos, isDiagonal } from '../../game/notes';
+const ALL_DIRS: SwipeDir[] = [...CARDINAL_DIRS, ...DIAGONAL_DIRS];
 import type { WorkerResponse } from '../../analysis/worker';
 import { toMono } from '../../analysis/features';
 
@@ -20,7 +22,7 @@ type ENote = ChartNote & { uid: number };
 type Tool = 'select' | 'tap' | 'hold' | 'swipe' | 'erase';
 let uidSeq = 1;
 const withUid = (n: ChartNote[]): ENote[] => n.map((x) => ({ ...x, uid: uidSeq++ }));
-const strip = (n: ENote[]): ChartNote[] => n.map(({ uid: _u, ...rest }) => { const r = { ...rest }; r.t = Math.round(r.t * 10000) / 10000; if (r.dur) r.dur = Math.round(r.dur * 10000) / 10000; return r; }).sort((a, b) => a.t - b.t || a.lane - b.lane);
+const strip = (n: ENote[]): ChartNote[] => n.map(({ uid: _u, ...rest }) => { const r = { ...rest }; r.t = Math.round(r.t * 10000) / 10000; if (r.dur) r.dur = Math.round(r.dur * 10000) / 10000; if (r.type !== 'hold' || !r.path?.length) delete r.path; if (r.type !== 'tap' || r.size === 'regular') delete r.size; return r; }).sort((a, b) => a.t - b.t || a.lane - b.lane);
 
 const LABEL_W = 64;
 const RULER_H = 22;
@@ -36,6 +38,7 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [tool, setTool] = useState<Tool>('select');
   const [swipeDir, setSwipeDir] = useState<SwipeDir>('up');
+  const [tapSize, setTapSize] = useState<TileSize>('regular');
   const [snap, setSnap] = useState(4);
   const [pps, setPps] = useState(160);
   const [view, setView] = useState(0);
@@ -271,14 +274,30 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
         const x = tToX(n.t), y = laneY(n.lane) + LANE_H * 0.2, h = LANE_H * 0.6;
         const selected = sel.has(n.uid);
         if (n.type === 'hold' && n.dur) {
-          g.fillStyle = selected ? 'rgba(255,255,255,0.55)' : colors[n.lane] + 'aa';
-          g.fillRect(x, y + h * 0.3, n.dur * pps, h * 0.4);
+          // body follows switch / rail paths across lane rows
+          const steps = Math.max(8, Math.ceil(n.dur * pps / 6));
+          g.strokeStyle = selected ? 'rgba(255,255,255,0.75)' : colors[n.lane] + 'cc';
+          g.lineWidth = h * 0.4;
+          g.lineCap = 'butt';
+          g.beginPath();
+          for (let k = 0; k <= steps; k++) {
+            const tt = n.t + (n.dur * k) / steps;
+            const yy = RULER_H + WAVE_H + holdLanePos(n, tt) * LANE_H + LANE_H / 2;
+            if (k) g.lineTo(tToX(tt), yy); else g.moveTo(tToX(tt), yy);
+          }
+          g.stroke();
+          for (const p of n.path ?? []) {
+            g.fillStyle = (p.slide ?? 0) > 0 ? '#29d3ff' : '#ffd23f';
+            g.beginPath(); g.arc(tToX(p.t), RULER_H + WAVE_H + p.lane * LANE_H + LANE_H / 2, 5, 0, Math.PI * 2); g.fill();
+          }
+          const endY = RULER_H + WAVE_H + holdLanePos(n, n.t + n.dur) * LANE_H + LANE_H * 0.35;
           g.fillStyle = '#ffffff';
-          g.fillRect(x + n.dur * pps - 3, y + h * 0.15, 4, h * 0.7);
+          g.fillRect(x + n.dur * pps - 3, endY, 4, LANE_H * 0.3);
         }
+        const hs = n.type === 'tap' ? SIZE_SCALE[n.size ?? 'regular'] : 1;
         g.beginPath();
-        g.roundRect(x - 8, y, 16, h, 6);
-        g.fillStyle = n.type === 'swipe' ? '#ffffff' : colors[n.lane];
+        g.roundRect(x - 8, y + (h - h * hs) / 2, 16, h * hs, Math.min(6, h * hs / 2));
+        g.fillStyle = n.type === 'swipe' ? (isDiagonal(n.dir) ? '#ffd23f' : '#ffffff') : colors[n.lane];
         g.fill();
         g.lineWidth = selected ? 3 : 1.5;
         g.strokeStyle = selected ? '#ffd23f' : 'rgba(0,0,0,0.6)';
@@ -287,7 +306,7 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
           g.fillStyle = '#20103a';
           g.font = '900 13px Outfit, system-ui';
           g.textAlign = 'center';
-          g.fillText({ up: '↑', down: '↓', left: '←', right: '→' }[n.dir ?? 'up'], x, y + h * 0.66);
+          g.fillText(DIR_ARROW[n.dir ?? 'up'], x, y + h * 0.66);
           g.textAlign = 'left';
         }
       }
@@ -346,6 +365,7 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
     const st = snapTime(t);
     const n: ENote = { t: st, lane, type: tool === 'swipe' ? 'swipe' : tool === 'hold' ? 'hold' : 'tap', uid: uidSeq++ };
     if (tool === 'swipe') n.dir = swipeDir;
+    if (tool === 'tap' && tapSize !== 'regular') n.size = tapSize;
     if (tool === 'hold') n.dur = stepSize(st) * Math.max(1, snap / 2);
     commit([...notes, n]);
     setSel(new Set([n.uid]));
@@ -561,8 +581,11 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
               {t[0].toUpperCase() + t.slice(1)}
             </button>
           ))}
-          {tool === 'swipe' && (['up', 'down', 'left', 'right'] as SwipeDir[]).map((d) => (
-            <button key={d} className={`tool small ${swipeDir === d ? 'active' : ''}`} onClick={() => setSwipeDir(d)}>{{ up: '↑', down: '↓', left: '←', right: '→' }[d]}</button>
+          {tool === 'swipe' && ALL_DIRS.map((d) => (
+            <button key={d} className={`tool small ${swipeDir === d ? 'active' : ''}`} onClick={() => setSwipeDir(d)} title={d}>{DIR_ARROW[d]}</button>
+          ))}
+          {tool === 'tap' && (['regular', 'half', 'micro'] as TileSize[]).map((z) => (
+            <button key={z} className={`tool small ${tapSize === z ? 'active' : ''}`} onClick={() => setTapSize(z)}>{z === 'regular' ? 'Full' : z === 'half' ? 'Half' : 'Micro'}</button>
           ))}
         </div>
         <div className="tool-group">
@@ -602,7 +625,35 @@ export function EditorScreen({ songId, diff: initialDiff }: { songId: string; di
                   options={[{ value: 'tap', label: 'Tap' }, { value: 'hold', label: 'Hold' }, { value: 'swipe', label: 'Swipe' }]} />
                 <Segmented value={n.lane} onChange={(v) => upd({ lane: v as Lane })} options={[{ value: 0, label: 'Left' }, { value: 1, label: 'Mid' }, { value: 2, label: 'Right' }]} />
                 {n.type === 'hold' && <label className="text-field"><span>Hold length (s)</span><input type="number" step="0.01" value={(n.dur ?? 0).toFixed(3)} onChange={(e) => upd({ dur: Math.max(0.15, Number(e.target.value)) })} /></label>}
-                {n.type === 'swipe' && <Segmented value={n.dir ?? 'up'} onChange={(v) => upd({ dir: v })} options={(['up', 'down', 'left', 'right'] as SwipeDir[]).map((d) => ({ value: d, label: { up: '↑', down: '↓', left: '←', right: '→' }[d] }))} />}
+                {n.type === 'swipe' && <Segmented value={n.dir ?? 'up'} onChange={(v) => upd({ dir: v })} options={ALL_DIRS.map((d) => ({ value: d, label: DIR_ARROW[d] }))} />}
+                {n.type === 'tap' && <Segmented value={n.size ?? 'regular'} onChange={(v) => upd({ size: v === 'regular' ? undefined : v })} options={[{ value: 'regular', label: 'Full tile' }, { value: 'half', label: 'Half tile' }, { value: 'micro', label: 'Microtile' }]} />}
+                {n.type === 'hold' && (
+                  <div className="path-editor">
+                    <span className="slider-label">Switch / rail path</span>
+                    {(n.path ?? []).map((p, i) => (
+                      <div key={i} className="path-row">
+                        <input type="number" step="0.001" value={p.t.toFixed(3)} aria-label="Transition time" onChange={(e) => upd({ path: (n.path ?? []).map((q, k) => k === i ? { ...q, t: Number(e.target.value) } : q) })} />
+                        <select value={p.lane} aria-label="Target lane" onChange={(e) => upd({ path: (n.path ?? []).map((q, k) => k === i ? { ...q, lane: Number(e.target.value) as Lane } : q) })}>
+                          <option value={0}>Left</option><option value={1}>Mid</option><option value={2}>Right</option>
+                        </select>
+                        <input type="number" step="0.01" min="0" value={(p.slide ?? 0).toFixed(2)} aria-label="Slide seconds (0 = switch)" title="Slide time: 0 = instant switch, >0 = rail" onChange={(e) => upd({ path: (n.path ?? []).map((q, k) => k === i ? { ...q, slide: Math.max(0, Number(e.target.value)) || undefined } : q) })} />
+                        <button className="btn btn-glass small" onClick={() => upd({ path: (n.path ?? []).filter((_, k) => k !== i) })}>✕</button>
+                      </div>
+                    ))}
+                    <div className="row-btns small">
+                      {(['switch', 'rail'] as const).map((kind) => (
+                        <button key={kind} className="btn btn-glass small" onClick={() => {
+                          const end = n.t + (n.dur ?? 0);
+                          const at = playhead > n.t + 0.1 && playhead < end - 0.1 ? playhead : n.t + (n.dur ?? 0) / 2;
+                          const cur = Math.round(holdLanePos(n, at)) as Lane;
+                          const lane = (cur === 2 ? 1 : cur + 1) as Lane;
+                          const slide = kind === 'rail' ? Math.min(0.5, (end - at) / 2) : undefined;
+                          upd({ path: [...(n.path ?? []), { t: snapTime(at), lane, slide }].sort((a, b) => a.t - b.t) });
+                        }}>+ {kind === 'switch' ? 'Switch' : 'Rail'} {playhead > n.t && playhead < n.t + (n.dur ?? 0) ? 'at playhead' : ''}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

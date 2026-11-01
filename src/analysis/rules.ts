@@ -1,5 +1,8 @@
 // Physical playability rules shared by the generator, the validator and the chart editor.
 import type { ChartNote, Difficulty, Lane } from '../types';
+import { holdLanes, isDiagonal, sortedPath } from '../game/notes';
+
+const isShort = (n: ChartNote) => n.type === 'tap' && !!n.size && n.size !== 'regular';
 
 export interface PlayRules {
   /** Minimum time between two notes in the same lane (end of previous to next start). */
@@ -11,12 +14,14 @@ export interface PlayRules {
   /** Minimum time between consecutive note groups. */
   minGap: number;
   maxChord: number;
+  /** Minimum spacing between consecutive short tiles (half / micro) — rapid repeats & bursts. */
+  rapidGap: number;
 }
 
 export const PLAY_RULES: Record<Difficulty, PlayRules> = {
-  normal: { laneGap: 0.42, releaseGap: 0.34, swipeGapAfter: 0.42, minGap: 0.3, maxChord: 2 },
-  hard: { laneGap: 0.22, releaseGap: 0.22, swipeGapAfter: 0.26, minGap: 0.15, maxChord: 2 },
-  extreme: { laneGap: 0.135, releaseGap: 0.16, swipeGapAfter: 0.19, minGap: 0.1, maxChord: 2 },
+  normal: { laneGap: 0.42, releaseGap: 0.34, swipeGapAfter: 0.42, minGap: 0.3, maxChord: 2, rapidGap: 0.3 },
+  hard: { laneGap: 0.22, releaseGap: 0.22, swipeGapAfter: 0.26, minGap: 0.15, maxChord: 2, rapidGap: 0.125 },
+  extreme: { laneGap: 0.135, releaseGap: 0.16, swipeGapAfter: 0.19, minGap: 0.1, maxChord: 2, rapidGap: 0.088 },
 };
 
 const EPS = 0.0015;
@@ -48,6 +53,7 @@ export function enforcePlayable(input: ChartNote[], diff: Difficulty, opts: Opts
   const out: ChartNote[] = [];
   const laneLast: (ChartNote | null)[] = [null, null, null];
   let lastGroupT = -99;
+  let lastGroupShort = false;
   let lastSwipeT = -99;
   const lastT = notes.length ? notes[notes.length - 1].t : 0;
 
@@ -60,7 +66,9 @@ export function enforcePlayable(input: ChartNote[], diff: Difficulty, opts: Opts
     const seen = new Set<number>();
     const g2 = group.filter((n) => (seen.has(n.lane) ? (report?.push(`Duplicate note in lane ${n.lane + 1} at ${fmt(T)}`), false) : (seen.add(n.lane), true)));
 
-    if (T - lastGroupT < R.minGap - EPS) {
+    const groupShort = g2.length === 1 && isShort(g2[0]);
+    const gapNeeded = groupShort && lastGroupShort ? R.rapidGap : R.minGap;
+    if (T - lastGroupT < gapNeeded - EPS) {
       report?.push(`Notes at ${fmt(T)} follow the previous notes too quickly (${ms(T - lastGroupT)})`);
       continue;
     }
@@ -68,10 +76,27 @@ export function enforcePlayable(input: ChartNote[], diff: Difficulty, opts: Opts
       report?.push(`Note at ${fmt(T)} comes too soon after a swipe (${ms(T - lastSwipeT)})`);
       continue;
     }
-    const activeHolds = out.filter((n) => n.type === 'hold' && n.t < T - EPS && n.t + (n.dur ?? 0) > T - 0.03).length;
+    const active = out.filter((n) => n.type === 'hold' && n.t < T - EPS && n.t + (n.dur ?? 0) > T - 0.03);
+    const activeHolds = active.length;
+    if (active.some((h) => h.path?.length) && g2.length) {
+      // nothing may be played while a switch / rail hold is travelling between lanes
+      report?.push(`Note at ${fmt(T)} during a switch/rail hold`);
+      continue;
+    }
     let allowed = R.maxChord - activeHolds;
     if (opts.allowFinalTriple && T === lastT && activeHolds === 0) allowed = 3;
-    if (diff === 'normal' && g2.length > 1) for (const n of g2) if (n.type === 'hold') { n.type = 'tap'; delete n.dur; report?.push(`Hold inside a chord at ${fmt(T)} (Normal)`); }
+    if (diff === 'normal' && g2.length > 1) for (const n of g2) if (n.type === 'hold') { n.type = 'tap'; delete n.dur; delete n.path; report?.push(`Hold inside a chord at ${fmt(T)} (Normal)`); }
+    for (const n of g2) {
+      if (n.type !== 'hold') { delete n.path; continue; }
+      if (n.type === 'hold' && n.path?.length) {
+        // transitions must be reachable: away from the head/tail and from each other
+        const ok = sortedPath(n).filter((p, i, arr) => p.t - n.t >= 0.2 && n.t + (n.dur ?? 0) - p.t - (p.slide ?? 0) >= 0.12 && (i === 0 || p.t - arr[i - 1].t - (arr[i - 1].slide ?? 0) >= 0.2));
+        if (ok.length !== n.path.length) report?.push(`Switch/rail hold at ${fmt(T)} has unreachable transitions (removed)`);
+        if (ok.length) n.path = ok; else delete n.path;
+      }
+    }
+    if (g2.length > 1) for (const n of g2) if (n.path?.length) { delete n.path; report?.push(`Switch/rail hold inside a chord at ${fmt(T)} (made a plain hold)`); }
+    if (diff === 'normal') for (const n of g2) if (n.type === 'swipe' && isDiagonal(n.dir)) { n.dir = n.dir!.startsWith('up') ? 'up' : 'down'; report?.push(`Diagonal swipe at ${fmt(T)} (Normal)`); }
     if (activeHolds > 0) {
       for (const n of g2) if (n.type === 'swipe' && diff !== 'extreme') { n.type = 'tap'; delete n.dir; report?.push(`Swipe during a hold at ${fmt(T)}`); }
     }
@@ -85,6 +110,7 @@ export function enforcePlayable(input: ChartNote[], diff: Difficulty, opts: Opts
         const p = laneLast[l];
         if (!p) return true;
         if (p.type === 'hold') return T >= p.t + (p.dur ?? 0) + R.releaseGap - EPS;
+        if (isShort(p) && isShort(n)) return T >= p.t + R.rapidGap - EPS;
         return T >= p.t + R.laneGap - EPS;
       };
       if (!free(lane)) {
@@ -107,8 +133,13 @@ export function enforcePlayable(input: ChartNote[], diff: Difficulty, opts: Opts
       used.add(lane);
     }
     if (!kept.length) continue;
-    for (const k of kept) { out.push(k); laneLast[k.lane] = k; if (k.type === 'swipe') lastSwipeT = T; }
+    for (const k of kept) {
+      out.push(k);
+      for (const l of k.type === 'hold' ? holdLanes(k) : [k.lane]) laneLast[l] = k;
+      if (k.type === 'swipe') lastSwipeT = T;
+    }
     lastGroupT = T;
+    lastGroupShort = kept.length === 1 && isShort(kept[0]);
   }
   return out;
 }

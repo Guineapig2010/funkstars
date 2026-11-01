@@ -10,7 +10,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'library' }
   | { name: 'details'; songId: string }
-  | { name: 'play'; songId: string; diff: Difficulty; mode: GameMode; playtest?: boolean; startAt?: number; nonce?: number }
+  | { name: 'play'; songId: string; diff: Difficulty; mode: GameMode; playtest?: boolean; tutorial?: boolean; startAt?: number; nonce?: number }
   | { name: 'results'; songId: string; diff: Difficulty; mode: GameMode; info: FinishInfo; outcome: RecordOutcome; unlocked: AchievementDef[] }
   | { name: 'settings'; tab?: string }
   | { name: 'progress' }

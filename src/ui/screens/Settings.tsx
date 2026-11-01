@@ -48,7 +48,7 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
             <Segmented label="Swipe input" value={s.swipeMode} onChange={(v) => set({ swipeMode: v })} options={[
               { value: 'chord', label: 'Lane + direction' }, { value: 'direction', label: 'Direction key only' }, { value: 'lane', label: 'Lane only (easy)' },
             ]} />
-            <p className="help">Keyboard swipes: press the note’s lane key and its direction key together (within 160 ms, either order). Touch: press the lane and flick in the arrow’s direction.</p>
+            <p className="help">Keyboard swipes: press the note’s lane key and its direction key together (within 160 ms, either order). Diagonals: use a diagonal key (default U / O / M / .) or press the two direction keys together (e.g. I + J for ↖). Touch: press the lane and flick in the arrow’s direction. Switch & rail holds: keep holding and press (or slide your finger to) the next lane when the path turns.</p>
             <h3>HUD</h3>
             <Toggle label="Show judgements" value={s.showJudgments} onChange={(v) => set({ showJudgments: v })} />
             <Toggle label="Show early / late" hint="Timing error in ms under each judgement" value={s.showEarlyLate} onChange={(v) => set({ showEarlyLate: v })} />
@@ -120,6 +120,7 @@ function SkinPicker({ value, onChange }: { value: NoteSkin; onChange: (v: NoteSk
 const ACTIONS: { a: KeyAction; label: string }[] = [
   { a: 'lane0', label: 'Left lane' }, { a: 'lane1', label: 'Middle lane' }, { a: 'lane2', label: 'Right lane' },
   { a: 'up', label: 'Swipe up' }, { a: 'down', label: 'Swipe down' }, { a: 'left', label: 'Swipe left' }, { a: 'right', label: 'Swipe right' },
+  { a: 'upleft', label: 'Swipe ↖' }, { a: 'upright', label: 'Swipe ↗' }, { a: 'downleft', label: 'Swipe ↙' }, { a: 'downright', label: 'Swipe ↘' },
   { a: 'pause', label: 'Pause' }, { a: 'restart', label: 'Restart (paused)' },
 ];
 

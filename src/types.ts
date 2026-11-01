@@ -2,7 +2,17 @@
 
 export type Lane = 0 | 1 | 2;
 export type NoteType = 'tap' | 'hold' | 'swipe';
-export type SwipeDir = 'up' | 'down' | 'left' | 'right';
+export type SwipeDir = 'up' | 'down' | 'left' | 'right' | 'upleft' | 'upright' | 'downleft' | 'downright';
+export const CARDINAL_DIRS: SwipeDir[] = ['up', 'down', 'left', 'right'];
+export const DIAGONAL_DIRS: SwipeDir[] = ['upleft', 'upright', 'downleft', 'downright'];
+/** Visual tile size. Timing windows are identical for every size. */
+export type TileSize = 'regular' | 'half' | 'micro';
+
+/**
+ * A lane transition inside a hold. At time `t` the hold starts moving to `lane`, arriving at
+ * `t + slide`. slide = 0 is an instant *switch*; slide > 0 is a *rail* (gradual slide).
+ */
+export interface PathPoint { t: number; lane: Lane; slide?: number }
 export type Difficulty = 'normal' | 'hard' | 'extreme';
 export const DIFFICULTIES: Difficulty[] = ['normal', 'hard', 'extreme'];
 
@@ -15,6 +25,10 @@ export interface ChartNote {
   dur?: number;
   /** Swipe direction (swipe notes only). */
   dir?: SwipeDir;
+  /** Visual tile size (tap / swipe). Missing = 'regular' (older charts). */
+  size?: TileSize;
+  /** Hold notes only: lane transitions (switch / rail holds). */
+  path?: PathPoint[];
 }
 
 export interface Chart {

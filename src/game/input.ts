@@ -3,6 +3,7 @@
 // never depends on frame timing.
 import type { Lane, SwipeDir } from '../types';
 import type { KeyAction, Settings } from '../store/settings';
+import { classifyGesture } from './notes';
 
 export interface InputHandlers {
   laneDown: (lane: Lane, ts: number) => void;
@@ -10,7 +11,9 @@ export interface InputHandlers {
   dir: (dir: SwipeDir, ts: number) => void;
   /** Pointer pressed a lane. Return true if the note under it is a swipe awaiting a gesture. */
   touchDown: (lane: Lane, ts: number) => boolean;
-  swipeGesture: (lane: Lane, dir: SwipeDir, downTs: number) => void;
+  swipeGesture: (lane: Lane, dx: number, dy: number, downTs: number) => void;
+  /** A pointer dragged into another lane; return true if the game accepted it (switch / rail hold). */
+  slide: (from: Lane, to: Lane, ts: number) => boolean;
   pause: () => void;
   restart: () => void;
   hint: (kind: 'keyboard' | 'touch' | 'gamepad' | 'mouse') => void;
@@ -18,7 +21,7 @@ export interface InputHandlers {
 
 interface PointerState { lane: Lane; downTs: number; x0: number; y0: number; awaiting: boolean; done: boolean }
 
-const DIRS: SwipeDir[] = ['up', 'down', 'left', 'right'];
+const DIRS: SwipeDir[] = ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'];
 
 function ts(e: Event): number {
   const now = performance.now();
@@ -136,34 +139,40 @@ export class InputManager {
     const t = ts(e);
     const st: PointerState = { lane, downTs: t, x0: e.clientX, y0: e.clientY, awaiting: false, done: false };
     this.pointers.set(e.pointerId, st);
-    if (this.laneCount[lane]++ === 0) {
-      st.awaiting = this.h.touchDown(lane, t);
-    } else {
-      st.awaiting = this.h.touchDown(lane, t);
-    }
+    this.laneCount[lane]++;
+    st.awaiting = this.h.touchDown(lane, t);
   };
 
   private onPointerMove = (e: PointerEvent) => {
     const st = this.pointers.get(e.pointerId);
     if (!st || st.done) return;
     const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
-    const dist = Math.hypot(dx, dy);
-    if (dist < this.swipeThreshold) return;
-    const dir: SwipeDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    if (!st.awaiting) {
+      // finger travelling across lanes: continue switch / rail holds
+      const lane = this.laneFromX(e.clientX);
+      if (lane !== st.lane && this.h.slide(st.lane, lane, ts(e))) {
+        this.laneCount[st.lane] = Math.max(0, this.laneCount[st.lane] - 1);
+        this.laneCount[lane]++;
+        st.lane = lane;
+      }
+      return;
+    }
+    if (Math.hypot(dx, dy) < this.swipeThreshold) return;
     st.done = true;
-    this.h.swipeGesture(st.lane, dir, st.downTs);
+    this.h.swipeGesture(st.lane, dx, dy, st.downTs);
   };
 
   private onPointerUp = (e: PointerEvent) => {
     const st = this.pointers.get(e.pointerId);
     if (!st) return;
     this.pointers.delete(e.pointerId);
-    if (this.laneCount[st.lane] > 0 && --this.laneCount[st.lane] === 0) this.h.laneUp(st.lane, ts(e));
+    if (this.laneCount[st.lane] > 0) this.laneCount[st.lane]--;
+    this.h.laneUp(st.lane, ts(e)); // one release per pointer (the rules engine counts presses per lane)
   };
 
   releaseAll = () => {
     const t = performance.now();
-    for (let l = 0; l < 3; l++) if (this.laneCount[l] > 0) { this.laneCount[l] = 0; this.h.laneUp(l as Lane, t); }
+    for (let l = 0; l < 3; l++) while (this.laneCount[l] > 0) { this.laneCount[l]--; this.h.laneUp(l as Lane, t); }
     this.keysDown.clear();
     this.pointers.clear();
     this.padLane = [false, false, false];
@@ -191,7 +200,7 @@ export class InputManager {
     if (edge(9)) this.h.pause();
     const ax = pad.axes[2] ?? 0, ay = pad.axes[3] ?? 0;
     const mag = Math.hypot(ax, ay);
-    const stick: SwipeDir | null = mag > 0.65 ? (Math.abs(ax) > Math.abs(ay) ? (ax > 0 ? 'right' : 'left') : ay > 0 ? 'down' : 'up') : null;
+    const stick: SwipeDir | null = mag > 0.65 ? classifyGesture(ax, ay) : null;
     if (stick && stick !== this.padStick) this.h.dir(stick, t);
     this.padStick = mag < 0.35 ? null : stick ?? this.padStick;
     this.padPrev = pad.buttons.map((x) => x.pressed);
