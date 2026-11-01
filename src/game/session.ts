@@ -113,7 +113,7 @@ export class GameSession {
       const n = list[k];
       if (n.judged !== null) continue;
       const d = t - n.t;
-      if (d < -WINDOWS.miss) return null; // far too early: ignore the press
+      if (d < -WINDOWS.early) return null; // far too early: ignore the press
       if (d <= WINDOWS.miss) return n;
     }
     return null;
@@ -244,7 +244,7 @@ export class GameSession {
       for (const n of this.notes) {
         if (n.judged !== null || n.type !== 'swipe') continue;
         const d = t - n.t;
-        if (d < -WINDOWS.great) break;
+        if (d < -WINDOWS.early) break;
         if (d > WINDOWS.miss) continue;
         if (n.dir === dir || (combo && n.dir === combo)) { this.hit(n, d); hits.push(n); this.recentDirs = []; break; }
       }

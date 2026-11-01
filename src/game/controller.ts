@@ -4,7 +4,8 @@ import type { Difficulty, GameMode, Lane, SongChartFile, SongMeta, SwipeDir, Cha
 import { audio, MusicPlayer } from '../audio/engine';
 import { playSfx, setHitSounds } from '../audio/sfx';
 import { GameSession, type RNote, type SessionResult } from './session';
-import { Renderer, lowerBound } from './renderer';
+import { Renderer, lowerBound, type RenderOptions } from './renderer';
+import { BoardRenderer } from './boardRenderer';
 import { InputManager } from './input';
 import { background } from './background';
 import { getSettings, keyLabel, subscribeSettings, updateSettings, type Settings } from '../store/settings';
@@ -44,7 +45,8 @@ const DIFF_COLORS: Record<Difficulty, string> = { normal: '#2fd87a', hard: '#ff9
 const LEAD_IN = 2.4;
 
 export class GameController {
-  private renderer!: Renderer;
+  private renderer!: Renderer | BoardRenderer;
+  private rendererKind = '';
   private input!: InputManager;
   private player!: MusicPlayer;
   session!: GameSession;
@@ -109,12 +111,7 @@ export class GameController {
     this.endTime = Math.min(this.cfg.chart.analysis.duration, Math.max(this.session.lastTime + 2.2, startAt + 4));
     this.cover = coverCanvas(this.cfg.meta, 256);
 
-    const colors = laneColorsFor(s.colorMode, this.cfg.meta.theme.colors);
-    this.renderer = new Renderer(this.canvas, {
-      laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed,
-      reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, highContrast: s.colorMode === 'highContrast',
-      perspective: s.highway === '3d',
-    });
+    this.renderer = this.makeRenderer(s);
     this.input = new InputManager(this.container, {
       laneDown: (l, ts) => this.onLaneDown(l, ts),
       laneUp: (l, ts) => this.onLaneUp(l, ts),
@@ -126,9 +123,18 @@ export class GameController {
       restart: () => { if (this.paused) this.restart(); },
       hint: (k) => { this.inputHint = k; },
     }, s);
-    this.input.laneBounds = () => {
+    this.input.laneBounds = (clientY: number) => {
       const r = this.canvas.getBoundingClientRect();
-      return [r.left + this.renderer.xAt(-1 / 3, 0), r.left + this.renderer.xAt(1 / 3, 0)];
+      const rd = this.renderer;
+      // lane edges at the height of the touch (the board narrows slightly with distance)
+      let z = 0;
+      const y = clientY - r.top;
+      if ('yAt' in rd && y < rd.hitY) {
+        let lo = 0, hi = 1;
+        for (let i = 0; i < 20; i++) { const m = (lo + hi) / 2; if (rd.yAt(m) > y) lo = m; else hi = m; }
+        z = lo;
+      }
+      return [r.left + rd.xAt(-1 / 3, z), r.left + rd.xAt(1 / 3, z)];
     };
     if (matchMedia('(pointer: coarse)').matches) this.inputHint = 'touch';
     this.input.attach();
@@ -152,14 +158,28 @@ export class GameController {
     this.loop();
   }
 
+  private renderOpts(s: Settings): RenderOptions {
+    const colors = laneColorsFor(s.colorMode, this.cfg.meta.theme.colors);
+    return {
+      laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed,
+      reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, highContrast: s.colorMode === 'highContrast',
+      perspective: s.playfield === '3d',
+    };
+  }
+  private makeRenderer(s: Settings): Renderer | BoardRenderer {
+    this.rendererKind = s.playfield;
+    if (s.playfield === 'board') return new BoardRenderer(this.canvas, { ...this.renderOpts(s), theme: this.cfg.meta.theme.colors });
+    return new Renderer(this.canvas, this.renderOpts(s));
+  }
+
   private applySettings(s: Settings) {
     this.settings = s;
     audio.setVolumes(s.musicVolume, s.sfxVolume);
     setHitSounds(s.hitSounds);
     if (this.player) this.player.userOffset = s.audioOffsetMs / 1000 + this.syncAdjust;
     if (this.renderer) {
-      const colors = laneColorsFor(s.colorMode, this.cfg.meta.theme.colors);
-      this.renderer.setOptions({ laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed, reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, perspective: s.highway === '3d' });
+      if (this.rendererKind !== s.playfield) this.renderer = this.makeRenderer(s);
+      else this.renderer.setOptions(this.renderOpts(s));
       this.renderer.particles.scale = s.particles;
     }
     if (this.input) this.input.applyBindings(s);

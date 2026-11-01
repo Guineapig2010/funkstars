@@ -8,7 +8,7 @@ const S = (notes: ChartNote[], mode: 'classic' | 'practice' = 'practice') => new
 describe('tile sizes', () => {
   it('judges regular, half and micro tiles with identical timing windows', () => {
     for (const size of ['regular', 'half', 'micro'] as const) {
-      for (const [d, j] of [[0.01, 'perfectPlus'], [0.05, 'perfect'], [-0.1, 'great'], [0.14, 'miss']] as const) {
+      for (const [d, j] of [[0.01, 'perfectPlus'], [0.05, 'perfect'], [-0.1, 'great'], [-0.22, 'great'], [0.15, 'great'], [0.2, 'miss']] as const) {
         const s = S([{ t: 1, lane: 0, type: 'tap', size }]);
         s.pressLane(0, 1 + d);
         s.update(2);
@@ -16,10 +16,10 @@ describe('tile sizes', () => {
       }
     }
   });
-  it('ignores presses earlier than the GREAT window (no ghost hits)', () => {
+  it('ignores presses far earlier than the hit window (no ghost hits)', () => {
     const s = S([{ t: 1, lane: 1, type: 'tap', size: 'micro' }]);
-    expect(s.pressLane(1, 0.8)).toBeNull();
-    s.releaseLane(1, 0.82);
+    expect(s.pressLane(1, 0.7)).toBeNull();
+    s.releaseLane(1, 0.72);
     expect(s.notes[0].judged).toBeNull();
     s.pressLane(1, 1.0);
     expect(s.notes[0].judged).toBe('perfectPlus');

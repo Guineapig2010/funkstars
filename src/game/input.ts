@@ -43,7 +43,7 @@ export class InputManager {
   private padLane = [false, false, false];
   enabled = true;
   /** Returns lane boundaries in client px: [x between lane0/1, x between lane1/2]. */
-  laneBounds: () => [number, number] = () => [window.innerWidth / 3, (window.innerWidth * 2) / 3];
+  laneBounds: (clientY: number) => [number, number] = () => [window.innerWidth / 3, (window.innerWidth * 2) / 3];
   swipeThreshold = 26;
 
   constructor(private el: HTMLElement, private h: InputHandlers, private settings: Settings) {
@@ -121,8 +121,8 @@ export class InputManager {
     }
   };
 
-  private laneFromX(x: number): Lane {
-    const [a, b] = this.laneBounds();
+  private laneFromX(x: number, y: number): Lane {
+    const [a, b] = this.laneBounds(y);
     return x < a ? 0 : x < b ? 1 : 2;
   }
 
@@ -135,7 +135,7 @@ export class InputManager {
     e.preventDefault();
     try { this.el.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
     this.h.hint(isMouse ? 'mouse' : 'touch');
-    const lane = this.laneFromX(e.clientX);
+    const lane = this.laneFromX(e.clientX, e.clientY);
     const t = ts(e);
     const st: PointerState = { lane, downTs: t, x0: e.clientX, y0: e.clientY, awaiting: false, done: false };
     this.pointers.set(e.pointerId, st);
@@ -149,7 +149,7 @@ export class InputManager {
     const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
     if (!st.awaiting) {
       // finger travelling across lanes: continue switch / rail holds
-      const lane = this.laneFromX(e.clientX);
+      const lane = this.laneFromX(e.clientX, e.clientY);
       if (lane !== st.lane && this.h.slide(st.lane, lane, ts(e))) {
         this.laneCount[st.lane] = Math.max(0, this.laneCount[st.lane] - 1);
         this.laneCount[lane]++;

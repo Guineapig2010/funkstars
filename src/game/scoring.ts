@@ -3,11 +3,14 @@ import type { ChartNote, Judgment } from '../types';
 
 /** Judgement windows in seconds (absolute timing error). */
 export const WINDOWS = {
-  perfectPlus: 0.04,
-  perfect: 0.08,
-  great: 0.13,
-  /** Notes are auto-missed this long after their time. Presses earlier than -great are ignored. */
-  miss: 0.16,
+  perfectPlus: 0.045,
+  perfect: 0.09,
+  /** Late side: anything up to this after the note is still a GREAT; later is a miss. */
+  great: 0.18,
+  /** Notes are auto-missed this long after their time. */
+  miss: 0.18,
+  /** Early side: a tap this early still hits the tile (as GREAT). Earlier taps are ignored. */
+  early: 0.25,
 };
 
 export const POINTS: Record<Judgment, number> = { perfectPlus: 100, perfect: 80, great: 40, miss: 0 };
@@ -23,9 +26,8 @@ export function judge(delta: number): Judgment | null {
   const a = Math.abs(delta);
   if (a <= WINDOWS.perfectPlus) return 'perfectPlus';
   if (a <= WINDOWS.perfect) return 'perfect';
-  if (a <= WINDOWS.great) return 'great';
-  if (a <= WINDOWS.miss) return 'miss';
-  return null;
+  if (delta < 0 ? a <= WINDOWS.early : a <= WINDOWS.great) return 'great';
+  return 'miss';
 }
 
 export function multiplierFor(combo: number): number {

@@ -66,7 +66,7 @@ another lane during a normal hold is ignored, so it never triggers stray hits.
 ## Tile sizes
 
 Each tap has a `size`: `regular` (default), `half` or `micro`. Size is **visual only**. All sizes use the same
-timing windows (PERFECT+ ±35 ms, PERFECT ±70 ms, GREAT ±120 ms, miss after 150 ms) and centre on the hit line
+timing windows (PERFECT+ ±45 ms, PERFECT ±90 ms, GREAT up to 250 ms early / 180 ms late; you tap the tile itself and the PERFECT bar only marks the ideal moment) and centre on the hit line
 at their timestamp. Half and micro tiles also draw a crisp white centre line marking the exact hit point.
 
 The generator picks the size from the real rhythm. Spacing of a 16th note or faster becomes a microtile, 8th-note

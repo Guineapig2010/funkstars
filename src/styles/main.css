@@ -651,3 +651,42 @@ input[type='range']::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .dot.tap.half { height: 6px; vertical-align: 1px; }
 .dot.tap.micro { height: 3px; vertical-align: 3px; }
 .timing-note { text-align: center; font-size: 13px; color: var(--ink-2); margin: -4px 0 0; }
+
+/* ---------- results (board style) ---------- */
+.screen-layer.route-results { padding: 0; }
+.results2 { min-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: calc(var(--safe-t) + 28px) 0 calc(var(--safe-b) + 28px);
+  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--c1) 55%, #0b1a12) 0%, color-mix(in srgb, var(--c1) 30%, #06100b) 55%, #050807 100%); }
+.r2-col { width: min(560px, 100%); padding: 0 var(--gutter); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.r2-title { font: 300 clamp(28px, 5vw, 52px) var(--font); letter-spacing: .08em; line-height: 1.05; animation: fadeUp .5s both; }
+.r2-artist { font: 700 18px var(--font); color: var(--ink-2); margin-top: -6px; }
+.r2-tags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.r2-failed { font: 800 12px var(--font); letter-spacing: .15em; padding: 5px 12px; border-radius: 999px; background: #ff4d5e; }
+.r2-medal { font: 800 12px var(--font); letter-spacing: .15em; padding: 5px 12px; border-radius: 999px; background: #ffd84a; color: #2a1c00; }
+.r2-cover { position: relative; margin: 10px 0 4px; padding: 14px; border-radius: 50%; animation: coverIn .7s cubic-bezier(.2,1.2,.4,1) both;
+  background: conic-gradient(from 210deg, #ffffff var(--prog), rgba(255,255,255,.12) 0); }
+.r2-cover .cover { display: block; width: clamp(200px, 34vw, 300px) !important; height: clamp(200px, 34vw, 300px) !important; border-radius: 50%; border: 6px solid rgba(10,20,14,.9); }
+.r2-stars { display: flex; gap: 10px; }
+.r2-stars .rstar { width: clamp(40px, 7vw, 58px); height: clamp(40px, 7vw, 58px); }
+.r2-score { position: relative; margin-top: 6px; padding: 10px 46px; border-radius: 999px; background: rgba(255,255,255,.14); border: 2px solid rgba(255,255,255,.22); }
+.r2-score b { font: 300 clamp(40px, 7vw, 64px) var(--font); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.r2-new { position: absolute; right: -30px; top: -16px; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; font: 800 12px/1.05 var(--font); color: #fff; background: linear-gradient(135deg, #ff7a3d, #ff2d6f); transform: rotate(-14deg); box-shadow: 0 6px 20px rgba(255,45,111,.5); animation: bounce 1s .9s both; }
+.r2-prev { color: var(--ink-3); }
+.r2-band { width: 100%; display: flex; justify-content: center; gap: clamp(20px, 7vw, 90px); padding: 16px var(--gutter); background: rgba(0,0,0,.45); }
+.r2-band div { display: flex; flex-direction: column; align-items: center; }
+.r2-band b { font: 300 clamp(30px, 5vw, 46px) var(--font); font-variant-numeric: tabular-nums; }
+.r2-band span { font: 400 13px var(--font); letter-spacing: .12em; color: var(--ink-2); }
+.r2-details { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; font-size: 14px; color: var(--ink-2); }
+.r2-details b { color: #fff; }
+.r2-actions { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; margin-top: 8px; }
+.r2-btn { width: min(340px, 90%); height: 62px; border-radius: 999px; font: 400 22px var(--font); letter-spacing: .12em; cursor: pointer; transition: transform .15s; }
+.r2-btn:hover { transform: scale(1.03); }
+.r2-btn.outline { background: rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.85); color: #fff; }
+.r2-btn.solid { background: #f3f5f2; border: none; color: #1c2a22; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.r2-next { text-align: center; color: var(--ink-2); }
+@media (max-width: 700px) {
+  .toasts { top: auto; bottom: calc(var(--safe-b) + 12px); right: 50%; transform: translateX(50%); gap: 6px; }
+  .toast { padding: 8px 12px; gap: 10px; }
+  .toast-icon { width: 34px; height: 34px; font-size: 20px; }
+  .toast-title { font-size: 13px; }
+  .toast-text { font-size: 12px; }
+}

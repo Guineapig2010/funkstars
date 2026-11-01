@@ -73,7 +73,7 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
               { value: 'auto', label: 'Auto' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'ultra', label: 'Ultra' },
             ]} />
             <p className="help">Auto adapts render resolution and particle count to keep the frame rate smooth.</p>
-            <Segmented label="Playfield" value={s.highway} onChange={(v) => set({ highway: v })} options={[{ value: 'flat', label: 'Flat board (big tiles)' }, { value: '3d', label: '3D road' }]} />
+            <Segmented label="Playfield" value={s.playfield} onChange={(v) => set({ playfield: v })} options={[{ value: 'board', label: 'Key board (default)' }, { value: 'flat', label: 'Flat neon' }, { value: '3d', label: '3D road' }]} />
             <Slider label="Particle intensity" value={s.particles} min={0} max={1.5} step={0.05} onChange={(v) => set({ particles: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Screen shake" value={s.screenShake} min={0} max={1} step={0.05} onChange={(v) => set({ screenShake: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Background dim" value={s.bgDim} min={0} max={0.8} step={0.05} onChange={(v) => set({ bgDim: v })} format={(v) => `${Math.round(v * 100)}%`} />

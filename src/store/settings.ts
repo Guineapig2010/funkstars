@@ -31,6 +31,8 @@ export interface Settings {
   bgDim: number;
   noteSkin: NoteSkin;
   highway: 'flat' | '3d';
+  /** Gameplay look: 'board' (default), 'flat' or '3d' (stored separately from the old setting). */
+  playfield: 'board' | 'flat' | '3d';
   assistTicks: boolean;
   autoSync: boolean;
   defaultMode: 'classic' | 'practice';
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   bgDim: 0.15,
   noteSkin: 'neon',
   highway: 'flat',
+  playfield: 'board',
   assistTicks: false,
   autoSync: true,
   defaultMode: 'classic',
