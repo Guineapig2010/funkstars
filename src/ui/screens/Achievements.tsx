@@ -1,4 +1,5 @@
 import { nav } from '../nav';
+import { TabBar } from './Home';
 import { useProfile } from '../../store/profile';
 import { ACHIEVEMENTS } from '../../game/achievements';
 import { ScreenHeader } from '../components/common';
@@ -28,6 +29,7 @@ export function AchievementsScreen() {
           );
         })}
       </div>
+      <TabBar active="achievements" />
     </div>
   );
 }

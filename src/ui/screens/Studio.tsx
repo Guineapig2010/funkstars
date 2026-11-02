@@ -2,6 +2,7 @@
 // beat-grid check, save to IndexedDB, and management of imported songs / chart overrides.
 import { useEffect, useRef, useState } from 'react';
 import { nav } from '../nav';
+import { TabBar } from './Home';
 import { audio } from '../../audio/engine';
 import { db } from '../../store/db';
 import { useSongs, upsertSongMeta, removeSongMeta, getChartFile, saveChartOverride, clearAudioCache } from '../../store/songs';
@@ -338,6 +339,7 @@ export function StudioScreen() {
           </div>
         </div>
       </div>
+      <TabBar active="studio" />
     </div>
   );
 }

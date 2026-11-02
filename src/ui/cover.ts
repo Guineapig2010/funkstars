@@ -217,13 +217,13 @@ function glowDot(g: CanvasRenderingContext2D, x: number, y: number, r: number, c
 
 const staticCache = new Map<string, HTMLCanvasElement>();
 /** Static cover rendered once at a given pixel size. */
-export function coverCanvas(meta: SongMeta, px: number): HTMLCanvasElement {
-  const key = `${meta.id}|${px}|${meta.coverUrl ?? ''}|${imgCache.has(meta.coverUrl ?? '') ? 1 : 0}|${meta.title}`;
+export function coverCanvas(meta: SongMeta, px: number, withText = true): HTMLCanvasElement {
+  const key = `${withText ? 't' : 'n'}|${meta.id}|${px}|${meta.coverUrl ?? ''}|${imgCache.has(meta.coverUrl ?? '') ? 1 : 0}|${meta.title}`;
   let c = staticCache.get(key);
   if (!c) {
     c = document.createElement('canvas');
     c.width = c.height = px;
-    drawCover(c.getContext('2d')!, px, meta, 1.3);
+    drawCover(c.getContext('2d')!, px, meta, 1.3, withText);
     staticCache.set(key, c);
   }
   return c;

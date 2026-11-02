@@ -35,6 +35,7 @@ export interface Settings {
   playfield: 'board' | 'flat' | '3d';
   assistTicks: boolean;
   autoSync: boolean;
+  vibration: boolean;
   defaultMode: 'classic' | 'practice';
   practiceSpeed: number;
   practiceStartStage: number;
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   playfield: 'board',
   assistTicks: false,
   autoSync: true,
+  vibration: true,
   defaultMode: 'classic',
   practiceSpeed: 1,
   practiceStartStage: 0,

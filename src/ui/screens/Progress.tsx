@@ -1,4 +1,5 @@
 import { nav } from '../nav';
+import { TabBar } from './Home';
 import { useProfile, levelInfo, totalStars } from '../../store/profile';
 import { useSongs } from '../../store/songs';
 import { MILESTONES, playerTitle, ACHIEVEMENTS } from '../../game/achievements';
@@ -81,6 +82,7 @@ export function ProgressScreen() {
           </div>
         </div>
       </div>
+      <TabBar active="progress" />
     </div>
   );
 }

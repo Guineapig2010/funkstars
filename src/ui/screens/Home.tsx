@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nav } from '../nav';
 import { useSongs } from '../../store/songs';
 import { useProfile, levelInfo, totalStars } from '../../store/profile';
-import { useSettings } from '../../store/settings';
+import { updateSettings, useSettings } from '../../store/settings';
 import { Btn, Cover, DIFF_META, Icon, MedalBadges, Stars, fmtTime } from '../components/common';
 import { Logo } from '../components/Logo';
 import { background } from '../../game/background';
@@ -10,7 +10,7 @@ import { preview } from '../../audio/preview';
 import { playSfx } from '../../audio/sfx';
 import { ACHIEVEMENTS, playerTitle } from '../../game/achievements';
 import { toggleFullscreen, fullscreenSupported } from '../App';
-import type { SongMeta } from '../../types';
+import type { Difficulty, GameMode, SongMeta } from '../../types';
 import { DIFFICULTIES } from '../../types';
 
 let rememberedId: string | null = null;
@@ -44,13 +44,21 @@ export function TopBar() {
   );
 }
 
+let lastDiff: Difficulty = 'normal';
+
+/** Home: swipeable round-cover carousel, difficulty + mode, big PLAY, tab bar. */
 export function HomeScreen() {
   const songs = useSongs();
   const p = useProfile();
+  const st = useSettings();
   const [idx, setIdx] = useState(() => Math.max(0, songs.findIndex((s) => s.id === (rememberedId ?? p.lastPlayed?.songId))));
+  const [diff, setDiff] = useState<Difficulty>(p.lastPlayed?.diff ?? lastDiff);
+  const [mode, setMode] = useState<GameMode>(st.defaultMode);
+  const [drag, setDrag] = useState(0);
+  const dragRef = useRef<{ x0: number; id: number } | null>(null);
   const song: SongMeta | undefined = songs[idx];
-  const carRef = useRef<HTMLDivElement>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const n = songs.length;
+  const go = (d: number) => { if (!n) return; playSfx('uiMove', 0.5); setIdx((i) => (i + d + n) % n); };
 
   useEffect(() => {
     if (!song) return;
@@ -59,104 +67,112 @@ export function HomeScreen() {
     background.setIntensity(0.15);
     preview.play(song);
     background.beatSource = () => preview.pulse();
-    const el = carRef.current?.querySelector<HTMLElement>(`[data-idx="${idx}"]`);
-    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  }, [song, idx]);
+  }, [song]);
+
+  const play = () => {
+    if (!song) return;
+    lastDiff = diff;
+    updateSettings({ defaultMode: mode });
+    playSfx('uiPlay', 0.7);
+    nav.go({ name: 'play', songId: song.id, diff, mode, nonce: Date.now() });
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat && e.code === 'Enter') return;
-      if (e.code === 'ArrowRight') { setIdx((i) => (i + 1) % songs.length); playSfx('uiMove', 0.5); }
-      else if (e.code === 'ArrowLeft') { setIdx((i) => (i - 1 + songs.length) % songs.length); playSfx('uiMove', 0.5); }
-      else if (e.code === 'Enter' && song && !(e.target as HTMLElement).closest('button')) { playSfx('uiSelect', 0.6); nav.go({ name: 'details', songId: song.id }); }
+      if ((e.target as HTMLElement).closest('input, select, textarea')) return;
+      if (e.code === 'ArrowRight') go(1);
+      else if (e.code === 'ArrowLeft') go(-1);
+      else if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+        const i = DIFFICULTIES.indexOf(diff) + (e.code === 'ArrowDown' ? 1 : -1);
+        if (i >= 0 && i < 3) { playSfx('uiMove', 0.5); setDiff(DIFFICULTIES[i]); }
+      } else if ((e.code === 'Enter' || e.code === 'Space') && !(e.target as HTMLElement).closest('button')) { e.preventDefault(); play(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [songs.length, song]);
-
-  const unlocked = Object.keys(p.achievements).length;
-  const lv = levelInfo(p.xp);
-  const completed = useMemo(() => Object.keys(p.bests).length, [p.bests]);
+  });
 
   if (!song) return <div className="center-msg">No songs found. Open the Studio to import music.</div>;
-  const best = p.bests[song.id] ?? {};
+  const best = p.bests[song.id]?.[diff];
+  const ring = best ? best.stars / 5 : 0;
+  const neighbours = [-2, -1, 0, 1, 2].map((o) => ({ o, s: songs[(idx + o + n * 4) % n] }));
 
   return (
-    <div className="home">
+    <div className="home2" style={{ ['--c1' as string]: song.theme.colors[0], ['--c2' as string]: song.theme.colors[1], ['--c3' as string]: song.theme.colors[2] }}>
       <TopBar />
-      <div className="home-grid">
-        <div className="home-hero">
-          <Logo size="lg" />
-          <div className="featured" onMouseMove={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            setTilt({ x: ((e.clientX - r.left) / r.width - 0.5) * 2, y: ((e.clientY - r.top) / r.height - 0.5) * 2 });
-          }} onMouseLeave={() => setTilt({ x: 0, y: 0 })}>
-            <div className="featured-cover" style={{ transform: `perspective(900px) rotateY(${tilt.x * 10}deg) rotateX(${-tilt.y * 10}deg)` }}>
-              <Cover meta={song} size={300} animated key={song.id} />
-              <div className="cover-shine" style={{ background: `radial-gradient(circle at ${50 + tilt.x * 40}% ${50 + tilt.y * 40}%, rgba(255,255,255,.35), transparent 55%)` }} />
-              <div className="vinyl" aria-hidden="true" />
-            </div>
-            <div className="featured-info" key={song.id + '-info'}>
-              <div className="eyebrow">{song.source === 'demo' ? 'TUTORIAL TRACK' : song.source === 'imported' ? 'IMPORTED' : 'FEATURED'} · {song.genre}</div>
-              <h2 className="featured-title">{song.title}</h2>
-              <div className="featured-artist">{song.artist}{song.tag ? <span className="tag">{song.tag}</span> : null}</div>
-              <div className="featured-meta">
-                <span>{Math.round(song.bpm)} BPM</span><span>{fmtTime(song.duration)}</span>
-                <span className="diff-pills">{DIFFICULTIES.map((d) => (
-                  <span key={d} className="diff-pill" style={{ ['--dc' as string]: DIFF_META[d].color }}>{DIFF_META[d].short}{song.levels[d]}</span>
-                ))}</span>
-              </div>
-              <div className="featured-best">
-                <Stars count={bestStars(p, song.id)} size={20} />
-                {DIFFICULTIES.map((d) => best[d] ? <MedalBadges key={d} medals={best[d]!.medals} /> : null)}
-              </div>
-              <div className="featured-actions">
-                <Btn variant="play" sfx="uiPlay" className="play-big" onClick={() => nav.go({ name: 'details', songId: song.id })} icon={<Icon name="play" size={28} />}>PLAY</Btn>
-                <Btn variant="glass" className="round" aria-label="Previous song" onClick={() => setIdx((i) => (i - 1 + songs.length) % songs.length)} icon={<Icon name="back" />} />
-                <Btn variant="glass" className="round" aria-label="Next song" onClick={() => setIdx((i) => (i + 1) % songs.length)} icon={<Icon name="next" />} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <nav className="home-tiles" aria-label="Main menu">
-          <Tile icon="library" title="Song Library" sub={`${songs.length} songs · ${completed} cleared`} color="#7b5cff" onClick={() => nav.go({ name: 'library' })} />
-          <Tile icon="chart" title="Progression" sub={`Level ${lv.level} · ${Math.round(lv.pct * 100)}% to next`} color="#19d3ff" onClick={() => nav.go({ name: 'progress' })} />
-          <Tile icon="trophy" title="Achievements" sub={`${unlocked} / ${ACHIEVEMENTS.length} unlocked`} color="#ffb81f" onClick={() => nav.go({ name: 'achievements' })} />
-          <Tile icon="upload" title="Studio" sub="Import songs · Chart editor" color="#ff4fa3" onClick={() => nav.go({ name: 'studio' })} />
-          <Tile icon="play" title={p.seenTutorial ? 'Tutorial' : 'Tutorial · NEW'} sub="Learn every note type" color="#ffd23f" onClick={() => nav.go({ name: 'play', songId: 'first-light', diff: 'normal', mode: 'practice', tutorial: true, nonce: Date.now() })} />
-          <Tile icon="sliders" title="Calibrate" sub={p.calibrated ? 'Latency tuned ✓' : 'Sync audio & input'} color="#2fd87a" onClick={() => nav.go({ name: 'calibrate' })} />
-          <Tile icon="gear" title="Settings" sub="Controls · Graphics · Audio" color="#a0a8c8" onClick={() => nav.go({ name: 'settings' })} />
-          <div className="home-stats">
-            <div><b>{p.stats.plays}</b><span>Plays</span></div>
-            <div><b>{p.stats.bestCombo}</b><span>Best combo</span></div>
-            <div><b>{p.stats.perfectPlus.toLocaleString('en-US')}</b><span>Perfect+</span></div>
-          </div>
-        </nav>
+      <div className="h2-brand"><Logo size="sm" /></div>
+      <div className="h2-stage"
+        onPointerDown={(e) => { dragRef.current = { x0: e.clientX, id: e.pointerId }; }}
+        onPointerMove={(e) => {
+          const d = dragRef.current;
+          if (d?.id !== e.pointerId) return;
+          const dx = e.clientX - d.x0;
+          // only take over the pointer once it is clearly a drag, so plain taps still click the covers
+          if (Math.abs(dx) > 8) { try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } setDrag(dx); }
+        }}
+        onPointerUp={(e) => {
+          const d = dragRef.current ? e.clientX - dragRef.current.x0 : 0;
+          dragRef.current = null;
+          if (Math.abs(d) > 45) go(d < 0 ? 1 : -1);
+          // let the click handler see the drag distance first, then reset
+          setTimeout(() => setDrag(0), 0);
+        }}
+        onPointerCancel={() => { dragRef.current = null; setDrag(0); }}>
+        {neighbours.map(({ o, s }) => (
+          <button key={`${s.id}-${o}`} className={`h2-disc ${o === 0 ? 'center' : ''}`} aria-label={o === 0 ? `${s.title} — details` : `Select ${s.title}`}
+            style={{ ['--o' as string]: o, transform: `translateX(calc(${o} * var(--step) + ${drag}px)) scale(${o === 0 ? 1 : Math.abs(o) === 1 ? 0.62 : 0.42})`, zIndex: 10 - Math.abs(o), opacity: Math.abs(o) === 2 ? 0.35 : 1 }}
+            onClick={() => { if (Math.abs(drag) > 5) return; if (o === 0) nav.go({ name: 'details', songId: s.id }); else go(o); }}>
+            <span className="h2-ring" style={{ ['--ring' as string]: o === 0 ? `${ring * 300}deg` : '0deg' }}>
+              <Cover meta={s} size={o === 0 ? 300 : 160} animated={o === 0} round />
+            </span>
+          </button>
+        ))}
       </div>
-
-      <div className="carousel-wrap">
-        <div className="carousel" ref={carRef} role="listbox" aria-label="Songs">
-          {songs.map((s, i) => (
-            <button key={s.id} data-idx={i} role="option" aria-selected={i === idx} className={`car-card ${i === idx ? 'active' : ''}`}
-              onClick={() => { if (i === idx) nav.go({ name: 'details', songId: s.id }); else { playSfx('uiMove', 0.5); setIdx(i); } }}>
-              <Cover meta={s} size={132} />
-              <span className="car-title">{s.title}</span>
-              <span className="car-sub"><Stars count={bestStars(p, s.id)} size={11} /></span>
-            </button>
-          ))}
+      <div className="h2-info" key={song.id}>
+        <h1 className="h2-title">{song.title.toUpperCase()}</h1>
+        <div className="h2-artist">{song.artist}{song.tag ? <span> · {song.tag}</span> : null}</div>
+        <div className="h2-meta">
+          <Stars count={bestStars(p, song.id)} size={18} />
+          <span>{best ? best.score.toLocaleString('en-US') : 'Not played'}</span>
+          {best && <MedalBadges medals={best.medals} />}
+          <span className="dim">{fmtTime(song.duration)} · {Math.round(song.bpm)} BPM</span>
         </div>
       </div>
+      <div className="h2-diffs" role="radiogroup" aria-label="Difficulty">
+        {DIFFICULTIES.map((d) => (
+          <button key={d} role="radio" aria-checked={d === diff} className={`h2-diff ${d === diff ? 'on' : ''}`} style={{ ['--dc' as string]: DIFF_META[d].color }}
+            onClick={() => { playSfx('uiMove', 0.5); setDiff(d); }}>
+            {d === 'extreme' && <span aria-hidden="true">🔥</span>}{DIFF_META[d].label.toUpperCase()} <b>{song.levels[d]}</b>
+          </button>
+        ))}
+      </div>
+      <div className="h2-mode">
+        <button className={mode === 'classic' ? 'on' : ''} onClick={() => setMode('classic')}>Classic</button>
+        <button className={mode === 'practice' ? 'on' : ''} onClick={() => setMode('practice')}>Practice</button>
+      </div>
+      <button className="h2-play" onClick={play}>PLAY</button>
+      <TabBar active="home" />
     </div>
   );
 }
 
-function Tile({ icon, title, sub, color, onClick }: { icon: string; title: string; sub: string; color: string; onClick: () => void }) {
+export function TabBar({ active }: { active: string }) {
+  const p = useProfile();
+  const items: { id: string; icon: string; label: string; go: () => void }[] = [
+    { id: 'home', icon: 'home', label: 'Play', go: () => nav.home() },
+    { id: 'library', icon: 'library', label: 'Songs', go: () => nav.go({ name: 'library' }) },
+    { id: 'progress', icon: 'chart', label: 'Progress', go: () => nav.go({ name: 'progress' }) },
+    { id: 'achievements', icon: 'trophy', label: `${Object.keys(p.achievements).length}/${ACHIEVEMENTS.length}`, go: () => nav.go({ name: 'achievements' }) },
+    { id: 'tutorial', icon: 'play', label: p.seenTutorial ? 'Tutorial' : 'Tutorial ●', go: () => nav.go({ name: 'play', songId: 'first-light', diff: 'normal', mode: 'practice', tutorial: true, nonce: Date.now() }) },
+    { id: 'studio', icon: 'upload', label: 'Studio', go: () => nav.go({ name: 'studio' }) },
+  ];
   return (
-    <button className="tile" style={{ ['--tc' as string]: color }} onClick={() => { playSfx('uiSelect', 0.6); onClick(); }} onMouseEnter={() => playSfx('uiMove', 0.3)}>
-      <span className="tile-icon"><Icon name={icon} size={26} /></span>
-      <span className="tile-text"><b>{title}</b><small>{sub}</small></span>
-      <span className="tile-arrow"><Icon name="next" size={18} /></span>
-    </button>
+    <nav className="tabbar" aria-label="Main menu">
+      {items.map((it) => (
+        <button key={it.id} className={it.id === active ? 'on' : ''} onClick={() => { playSfx('uiSelect', 0.5); it.go(); }}>
+          <Icon name={it.icon} size={22} />
+          <span>{it.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }

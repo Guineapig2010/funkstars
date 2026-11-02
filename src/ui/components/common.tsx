@@ -18,7 +18,7 @@ export function fmtTime(s: number) {
 }
 
 /** Album cover. `animated` re-draws the procedural art each frame (featured / detail views). */
-export function Cover({ meta, size = 256, animated = false, className = '' }: { meta: SongMeta; size?: number; animated?: boolean; className?: string }) {
+export function Cover({ meta, size = 256, animated = false, className = '', round = false }: { meta: SongMeta; size?: number; animated?: boolean; className?: string; round?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [, setLoaded] = useState(0);
   useEffect(() => {
@@ -32,7 +32,7 @@ export function Cover({ meta, size = 256, animated = false, className = '' }: { 
     c.width = c.height = px;
     const g = c.getContext('2d')!;
     if (!animated || getSettings().reducedMotion || meta.coverUrl) {
-      g.drawImage(coverCanvas(meta, px), 0, 0);
+      g.drawImage(coverCanvas(meta, px, !round), 0, 0);
       return;
     }
     let raf = 0;
@@ -43,7 +43,7 @@ export function Cover({ meta, size = 256, animated = false, className = '' }: { 
       if (now - last < 32) return; // ~30fps is plenty for cover art
       last = now;
       g.clearRect(0, 0, px, px);
-      drawCover(g, px, meta, (now - t0) / 1000 + 1.3);
+      drawCover(g, px, meta, (now - t0) / 1000 + 1.3, !round);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);

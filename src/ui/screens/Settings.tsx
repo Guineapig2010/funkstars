@@ -35,6 +35,7 @@ export function SettingsScreen({ tab: initial }: { tab?: string }) {
             <Slider label="Music" value={s.musicVolume} min={0} max={1} onChange={(v) => set({ musicVolume: v })} format={(v) => `${Math.round(v * 100)}%`} />
             <Slider label="Sound effects" value={s.sfxVolume} min={0} max={1} onChange={(v) => { set({ sfxVolume: v }); playSfx('tap', 0.6); }} format={(v) => `${Math.round(v * 100)}%`} />
             <Toggle label="Hit sounds" hint="Subtle click on every hit" value={s.hitSounds} onChange={(v) => set({ hitSounds: v })} />
+            <Toggle label="Vibration" hint="A short buzz on every hit (phones that support it — iPhone browsers don’t allow vibration)" value={s.vibration} onChange={(v) => set({ vibration: v })} />
             <Toggle label="Auto-sync" hint="Learns your device’s audio delay from your taps while you play and keeps notes on the beat" value={s.autoSync} onChange={(v) => set({ autoSync: v })} />
             <Toggle label="Assist ticks" hint="Clicks at every note time, mixed with the music — use it to hear whether the chart sits on the beat" value={s.assistTicks} onChange={(v) => set({ assistTicks: v })} />
             <h3>Timing</h3>

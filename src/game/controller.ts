@@ -96,6 +96,7 @@ export class GameController {
     this.session = new GameSession(notes, this.cfg.mode, {
       onJudge: (n, j, d) => {
         this.renderer.onJudge(n.lane, j, d, n.type, n.type === 'tap' ? sizeOf(n) : 'regular');
+        if (this.settings.vibration && navigator.vibrate) { try { navigator.vibrate(j === 'miss' ? 35 : n.type === 'swipe' ? 18 : 9); } catch { /* unsupported */ } }
         if (j !== 'miss') {
           if (n.type === 'swipe') { this.swipesHit++; playSfx('swipe', 0.8); }
           playSfx(j === 'perfectPlus' ? 'perfectPlus' : 'tap', n.type === 'swipe' ? 0.35 : 0.55);

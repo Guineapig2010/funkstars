@@ -107,17 +107,20 @@ try {
     await start(page);
     await page.screenshot({ path: `${OUT}/01-splash-1080p.png` });
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home', { timeout: 8000 });
+    await page.waitForSelector('.home2', { timeout: 8000 });
     await page.waitForTimeout(1200);
     await page.screenshot({ path: `${OUT}/02-home-1080p.png` });
-    const songCount = await page.$$eval('.car-card', (els) => els.length);
-    log('home shows all songs in carousel', songCount === 11, `${songCount} cards`);
+    const t1 = await page.$eval('.h2-title', (e) => e.textContent);
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(700);
-    await page.click('text=Song Library');
+    const t2 = await page.$eval('.h2-title', (e) => e.textContent);
+    log('home carousel switches songs', t1 !== t2, `${t1} -> ${t2}`);
+    await page.click('.tabbar button:has-text("Songs")');
     await page.waitForSelector('.song-grid');
     await page.waitForTimeout(900);
     await page.screenshot({ path: `${OUT}/03-library-1080p.png` });
+    const songCount = await page.$$eval('.song-card', (els) => els.length);
+    log('library shows all songs', songCount === 11, `${songCount} cards`);
     await page.fill('.search input', 'funk');
     await page.waitForTimeout(300);
     const filtered = await page.$$eval('.song-card', (els) => els.length);
@@ -207,7 +210,7 @@ try {
     await page.goto(URL);
     await page.waitForSelector('.press-start');
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
+    await page.waitForSelector('.home2');
     await page.click('[aria-label="Settings"]');
     await page.click('.tabs button:has-text("Gameplay")');
     await page.waitForTimeout(400);
@@ -224,17 +227,17 @@ try {
     await page.reload();
     await page.waitForSelector('.press-start');
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
-    for (const [name, sel, file] of [['Progression', '.progress-grid', '09-progress'], ['Achievements', '.ach-grid', '10-achievements'], ['Studio', '.studio-grid', '11-studio']]) {
-      await page.click(`.tile:has-text("${name}")`);
+    await page.waitForSelector('.home2');
+    for (const [name, sel, file] of [['Progress', '.progress-grid', '09-progress'], ['/21', '.ach-grid', '10-achievements'], ['Studio', '.studio-grid', '11-studio']]) {
+      await page.click(`.tabbar button:has-text("${name}")`);
       await page.waitForSelector(sel);
       await page.waitForTimeout(700);
       await page.screenshot({ path: `${OUT}/${file}-1080p.png` });
-      await page.click('[aria-label="Back"]');
-      await page.waitForSelector('.home');
+      await page.click('.tabbar button:has-text("Play")');
+      await page.waitForSelector('.home2');
     }
     // editor
-    await page.click('.tile:has-text("Song Library")');
+    await page.click('.tabbar button:has-text("Songs")');
     await page.click('.song-card:has-text("Virou") .song-card-main');
     await page.click('text=Edit chart');
     await page.waitForSelector('.editor canvas');
@@ -255,8 +258,8 @@ try {
     await page.goto(URL);
     await page.waitForSelector('.press-start');
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
-    await page.click('.tile:has-text("Tutorial")');
+    await page.waitForSelector('.home2');
+    await page.click('.tabbar button:has-text("Tutorial")');
     await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > -2 && window.__fsGame.session, null, { timeout: 20000 });
     const tutP = bot(page, { maxSeconds: 120 });
     await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 17.3, null, { timeout: 60000 });
@@ -278,7 +281,7 @@ try {
     const page = await ctx.newPage();
     await start(page);
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
+    await page.waitForSelector('.home2');
     await page.waitForTimeout(1200);
     await page.screenshot({ path: `${OUT}/20-home-4k.png` });
     await ctx.close();
@@ -289,8 +292,8 @@ try {
     const page = await ctx.newPage();
     await start(page);
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
-    await page.click('.featured-actions .play-big');
+    await page.waitForSelector('.home2');
+    await page.click('.h2-disc.center');
     await page.waitForSelector('.details');
     await page.click('.diff-card:has-text("Extreme")');
     await page.click('.details-actions .play-big');
@@ -308,7 +311,7 @@ try {
     const page = await ctx.newPage();
     await start(page);
     await page.keyboard.press('Enter');
-    await page.waitForSelector('.home');
+    await page.waitForSelector('.home2');
     await page.waitForTimeout(1000);
     await page.screenshot({ path: `${OUT}/30-home-laptop.png` });
     await ctx.close();
@@ -324,10 +327,10 @@ try {
     await page.waitForSelector('.press-start');
     await page.screenshot({ path: `${OUT}/40-${label}-splash.png` });
     await page.touchscreen.tap(100, 200);
-    await page.waitForSelector('.home');
+    await page.waitForSelector('.home2');
     await page.waitForTimeout(1200);
     await page.screenshot({ path: `${OUT}/41-${label}-home.png` });
-    await page.tap('.featured-actions .play-big');
+    await page.tap('.h2-disc.center');
     await page.waitForSelector('.details');
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/42-${label}-details.png` });
@@ -370,8 +373,8 @@ try {
       await page.goto(URL);
       await page.waitForSelector('.press-start');
       await page.touchscreen.tap(100, 200);
-      await page.waitForSelector('.home');
-      await page.tap('.tile:has-text("Tutorial")');
+      await page.waitForSelector('.home2');
+      await page.tap('.tabbar button:has-text("Tutorial")');
       await page.waitForFunction(() => window.__fsGame && window.__fsGame.session && window.__fsGame.songTime > -2, null, { timeout: 20000 });
       const tt = bot(page, { method: 'touch', maxSeconds: 120 });
       await page.waitForFunction(() => window.__fsGame && window.__fsGame.songTime > 50, null, { timeout: 90000 });

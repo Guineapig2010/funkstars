@@ -61,7 +61,7 @@ export function ResultsScreen({ route }: { route: ResultsRoute }) {
           {r.completed && title !== 'CLEAR!' && <span className="r2-medal">{title}</span>}
         </div>
         <div className="r2-cover" style={{ ['--prog' as string]: `${Math.min(1, r.score / Math.max(1, r.maxScore)) * 300}deg` }}>
-          <Cover meta={song} size={300} animated />
+          <Cover meta={song} size={300} animated round />
         </div>
         <div className="r2-stars">
           {[0, 1, 2, 3, 4].map((i) => (

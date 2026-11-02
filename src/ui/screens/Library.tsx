@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { nav } from '../nav';
+import { TabBar } from './Home';
 import { useSongs } from '../../store/songs';
 import { useProfile, toggleFavorite } from '../../store/profile';
 import { Btn, Cover, DIFF_META, Icon, MedalBadges, ScreenHeader, Segmented, Stars, fmtTime } from '../components/common';
@@ -106,6 +107,7 @@ export function LibraryScreen() {
         })}
         {!list.length && <div className="empty">No songs match these filters.</div>}
       </div>
+      <TabBar active="library" />
     </div>
   );
 }

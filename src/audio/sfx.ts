@@ -42,14 +42,20 @@ export function initSfx() {
   const ctx = audio.ctx;
   if (!ctx || buffers.size) return;
   let lp = 0;
-  buffers.set('tap', make(ctx, 0.07, (t) => {
-    const f = 2200 * Math.exp(-t * 40) + 700;
-    return (sine(f, t) * 0.5 + noise() * 0.15 * Math.exp(-t * 120)) * env(t, 0.0008, 0.018);
+  // punchy "key press": a crisp click transient over a short wooden thock
+  let hp = 0;
+  buffers.set('tap', make(ctx, 0.09, (t) => {
+    const nz = noise(); const click = (nz - hp) * Math.exp(-t * 900); hp = nz;
+    const thock = sine(170 * Math.exp(-t * 18) + 90, t) * Math.exp(-t * 55);
+    const body = sine(1250 * Math.exp(-t * 30) + 400, t) * Math.exp(-t * 90) * 0.35;
+    return (click * 0.55 + thock * 0.6 + body) * (t < 0.0006 ? t / 0.0006 : 1);
   }));
-  buffers.set('perfectPlus', make(ctx, 0.28, (t) => {
-    const click = (sine(2400 * Math.exp(-t * 40) + 900, t) * 0.4 + noise() * 0.1 * Math.exp(-t * 140)) * env(t, 0.0008, 0.016);
-    return click + bell(t, 2637, 0.09) * 0.22 + bell(Math.max(0, t - 0.035), 3951, 0.08) * (t > 0.035 ? 0.16 : 0);
-  }, 0.2));
+  let hp2 = 0;
+  buffers.set('perfectPlus', make(ctx, 0.24, (t) => {
+    const nz = noise(); const click = (nz - hp2) * Math.exp(-t * 900); hp2 = nz;
+    const thock = sine(190 * Math.exp(-t * 18) + 100, t) * Math.exp(-t * 55);
+    return click * 0.55 + thock * 0.6 + bell(t, 2637, 0.06) * 0.16 + (t > 0.03 ? bell(t - 0.03, 3951, 0.06) * 0.12 : 0);
+  }, 0.15));
   buffers.set('swipe', make(ctx, 0.2, (t) => {
     const nz = noise();
     const k = 0.15 + 0.8 * (t / 0.2);
