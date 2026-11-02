@@ -34,6 +34,8 @@ export class BoardRenderer {
   private switchPop: { lane: number; t0: number } | null = null;
   private eq = new Float32Array(48);
   private touches: { x: number; y: number; t0: number }[] = [];
+  private beams: { lane: number; t0: number; strong: boolean }[] = [];
+  private circlePulse = 0;
   /** Visual ring at a touch / click point (canvas px). */
   onTouch(x: number, y: number) { this.touches.push({ x, y, t0: this.clock }); }
   /** Hit tiles flash white and pop where they were hit. */
@@ -97,6 +99,8 @@ export class BoardRenderer {
     const y = this.yAt(z);
     if (j !== 'miss') {
       this.flash[lane] = 1;
+      this.beams.push({ lane, t0: this.clock, strong: j === 'perfectPlus' });
+      this.circlePulse = 1;
       this.shards.push({ x, y, w: this.noteW * this.scaleAt(z), h: this.noteH * SIZE_SCALE[size] * this.scaleAt(z), t0: this.clock });
       const k = size === 'micro' ? 0.55 : size === 'half' ? 0.8 : 1;
       const s = this.laneW / 140;
@@ -149,6 +153,7 @@ export class BoardRenderer {
 
     this.drawBoard(s, dt);
     this.drawZone(s, dt);
+    this.drawBeams();
     this.drawHolds(s);
     this.drawTiles(s);
     this.drawPressedKeys(s, dt);
@@ -205,12 +210,13 @@ export class BoardRenderer {
       const target = 0.25 + s.intensity * 0.45 + s.beatPulse * 0.6 * (0.6 + 0.4 * Math.sin(i * 1.7 + this.clock * 3));
       this.eq[i] += (target - this.eq[i]) * Math.min(1, dt * 14);
     }
-    g.fillStyle = rgba(lighten(this.frame, 0.25), 0.9);
+    const mult = multiplierFor(s.session.combo);
+    g.fillStyle = mult >= 4 ? 'rgba(255,214,90,0.95)' : rgba(lighten(this.frame, 0.12 + mult * 0.12), 0.75 + mult * 0.06);
     for (let i = 0; i < n; i++) {
       const z = zt - (i / n) * (zt - zb);
       const y = this.yAt(z);
       const sc = this.scaleAt(z);
-      const len = this.laneW * 0.11 * sc * (0.4 + this.eq[i]);
+      const len = this.laneW * 0.11 * sc * (0.4 + this.eq[i]) * (0.85 + mult * 0.12);
       const th = Math.max(1.5, 3 * sc);
       for (const side of [-1, 1]) {
         const x = this.xAt(side * 1, z) + side * fw * sc * 0.25;
@@ -365,6 +371,28 @@ export class BoardRenderer {
       g.fillText('SWITCH', this.xAt(this.laneU(this.switchPop.lane), 0), this.hitY - this.zoneH * 0.9);
       g.globalAlpha = 1;
     }
+  }
+
+  /** Light beam shooting up the lane on every hit. */
+  private drawBeams() {
+    if (this.opts.reducedMotion) { this.beams = []; return; }
+    const g = this.g;
+    this.beams = this.beams.filter((b) => this.clock - b.t0 < 0.32);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    for (const b of this.beams) {
+      const k = (this.clock - b.t0) / 0.32;
+      const a = (1 - k) * (b.strong ? 0.55 : 0.32);
+      const u0 = -1 + b.lane * (2 / 3) + 0.04, u1 = u0 + 2 / 3 - 0.08;
+      const zTop = 0.15 + 0.85 * Math.min(1, k * 2.2);
+      this.lanePoly(u0, u1, 0, zTop);
+      const lg = g.createLinearGradient(0, this.yAt(zTop), 0, this.hitY);
+      lg.addColorStop(0, rgba(this.accent, 0));
+      lg.addColorStop(1, rgba(b.strong ? '#ffffff' : this.accent, a));
+      g.fillStyle = lg;
+      g.fill();
+    }
+    g.restore();
   }
 
   private drawHitPops() {
@@ -711,7 +739,8 @@ export class BoardRenderer {
   /** Score circle: stage, score, multiplier and progress to the next multiplier. */
   private drawCircle(s: FrameState, dt: number) {
     const g = this.g;
-    const R = this.circleR, cx = this.cx, cy = this.circleY;
+    this.circlePulse *= Math.exp(-dt * 9);
+    const R = this.circleR * (1 + (this.opts.reducedMotion ? 0 : this.circlePulse * 0.035)), cx = this.cx, cy = this.circleY;
     this.shownScore += (s.session.score - this.shownScore) * Math.min(1, dt * 12);
     // equalizer ticks either side
     g.fillStyle = 'rgba(255,255,255,0.75)';

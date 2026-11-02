@@ -73,7 +73,7 @@ export function DetailsScreen({ songId }: { songId: string }) {
       <div className="details-grid">
         <div className="details-art">
           <div className="details-cover-wrap">
-            <Cover meta={song} size={380} animated />
+            <Cover meta={song} size={380} animated round />
             <div className="details-glow" />
           </div>
         </div>

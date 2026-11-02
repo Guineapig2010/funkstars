@@ -357,7 +357,7 @@ export class GameSession {
     this.score += POINTS[j] * this.multiplier;
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
-    if (this.combo % 50 === 0) this.events.onMilestone?.(this.combo);
+    if (this.combo % 25 === 0) this.events.onMilestone?.(this.combo);
     this.events.onJudge?.(n, j, delta);
   }
 

@@ -730,3 +730,26 @@ input[type='range']::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .tabbar button.on, .tabbar button:hover { color: #fff; background: rgba(255,255,255,.08); }
 @media (max-height: 640px) { .home2 { --disc: min(200px, 28vh, 50vw); gap: 8px; } .h2-brand { display: none; } }
 .library, .progress-screen, .achievements, .studio { padding-bottom: calc(var(--safe-b) + 84px); }
+
+/* ---------- details & library in the clean style ---------- */
+.details { position: relative; }
+.details::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 30% 40%, color-mix(in srgb, var(--c1) 40%, transparent) 0%, transparent 65%); }
+.details-cover-wrap { padding: 12px; border-radius: 50%; background: rgba(255,255,255,.16); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.details-cover-wrap .cover { border-radius: 50% !important; border: 6px solid rgba(10,10,16,.85); }
+.details-glow { border-radius: 50%; }
+.details-title { font-weight: 300; letter-spacing: .06em; text-transform: uppercase; }
+.details-artist { font-weight: 700; }
+.diff-card { border-radius: 22px; background: rgba(0,0,0,.3); }
+.diff-card.active { background: color-mix(in srgb, var(--dc) 30%, rgba(0,0,0,.3)); }
+.diff-level { font-weight: 300; }
+.details-actions .btn-play.play-big { background: #f3f5f2; color: #14171b; text-shadow: none; font-weight: 500; letter-spacing: .18em; animation: none; box-shadow: 0 10px 34px rgba(0,0,0,.4); }
+.details-actions .btn-play.play-big::before, .details-actions .btn-play.play-big::after { display: none; }
+.song-card-main { background: rgba(0,0,0,.28); border-radius: 26px; align-items: center; text-align: center; }
+.song-card-cover { border-radius: 50%; width: 82%; margin: 6px auto 0; padding: 6px; background: rgba(255,255,255,.14); overflow: visible; }
+.song-card-cover .cover { border-radius: 50%; }
+.song-card-main:hover .cover { transform: rotate(8deg) scale(1.03); }
+.song-card-body { align-items: center; width: 100%; }
+.song-card-title { font-weight: 400; letter-spacing: .04em; text-transform: uppercase; max-width: 100%; }
+.song-card-row { width: 100%; }
+.duration { right: 0; bottom: 4px; border-radius: 999px; }
+.src-badge { left: 50%; top: -4px; transform: translateX(-50%); border-radius: 999px; }

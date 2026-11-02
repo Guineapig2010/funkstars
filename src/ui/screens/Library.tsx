@@ -82,7 +82,7 @@ export function LibraryScreen() {
               onMouseEnter={() => setHover(s)} onFocus={() => setHover(s)}>
               <button className="song-card-main" onClick={() => { playSfx('uiSelect', 0.6); setFeatured(s.id); nav.go({ name: 'details', songId: s.id }); }}>
                 <div className="song-card-cover">
-                  <Cover meta={s} size={180} />
+                  <Cover meta={s} size={180} round />
                   <span className="duration">{fmtTime(s.duration)}</span>
                   {s.source !== 'builtin' && <span className="src-badge">{s.source === 'demo' ? 'TUTORIAL' : 'IMPORTED'}</span>}
                 </div>
