@@ -220,6 +220,7 @@ export class GameController {
     const rect = this.canvas.getBoundingClientRect();
     const rd = this.renderer;
     const touched = 'noteAt' in rd ? rd.noteAt(x - rect.left, y - rect.top, this.notes, this.firstVisible, this.player.songTime(ts)) : null;
+    if ('onTouch' in rd && x > -1000) rd.onTouch(x - rect.left, y - rect.top);
     const lane = touched ? touched.lane : l;
     const r = this.session.touchDown(lane, this.inputTime(ts), touched);
     if (r.awaitingSwipe && r.note) this.swipeTargets.set(lane, r.note); else this.swipeTargets.delete(lane);

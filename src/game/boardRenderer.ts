@@ -33,6 +33,9 @@ export class BoardRenderer {
   private targetHint = [0, 0, 0];
   private switchPop: { lane: number; t0: number } | null = null;
   private eq = new Float32Array(48);
+  private touches: { x: number; y: number; t0: number }[] = [];
+  /** Visual ring at a touch / click point (canvas px). */
+  onTouch(x: number, y: number) { this.touches.push({ x, y, t0: this.clock }); }
   /** Hit tiles flash white and pop where they were hit. */
   private shards: { x: number; y: number; w: number; h: number; t0: number }[] = [];
 
@@ -262,11 +265,12 @@ export class BoardRenderer {
   private drawZone(s: FrameState, dt: number) {
     const g = this.g;
     // pressed lanes glow below the zone
+    const keys = s.inputHint === 'keyboard' || s.inputHint === 'gamepad';
     for (let l = 0; l < 3; l++) {
-      const target = s.pressed[l] ? 1 : 0;
+      const target = s.pressed[l] && keys ? 1 : 0;
       this.press[l] += (target - this.press[l]) * Math.min(1, dt * 22);
       this.flash[l] *= Math.exp(-dt * 6);
-      const a = Math.max(this.press[l] * 0.85, this.flash[l] * 0.6);
+      const a = Math.max(this.press[l] * 0.85, keys ? this.flash[l] * 0.6 : 0);
       if (a < 0.02) continue;
       const u0 = -1 + l * (2 / 3), u1 = u0 + 2 / 3;
       const zTop = this.zOf(this.zoneH / 2 / this.pps) * -1;
@@ -304,8 +308,19 @@ export class BoardRenderer {
 
   private drawPressedKeys(s: FrameState, _dt: number) {
     const g = this.g;
+    const keys = s.inputHint === 'keyboard' || s.inputHint === 'gamepad';
+    // touch / mouse: a ring where the finger landed (the tile itself is what you hit)
+    this.touches = this.touches.filter((p) => this.clock - p.t0 < 0.3);
+    for (const p of this.touches) {
+      const k = (this.clock - p.t0) / 0.3;
+      g.globalAlpha = 1 - k;
+      g.lineWidth = 3;
+      g.strokeStyle = this.accent;
+      g.beginPath(); g.arc(p.x, p.y, this.laneW * (0.15 + 0.25 * k), 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = 1;
+    }
     for (let l = 0; l < 3; l++) {
-      const a = Math.max(this.press[l], this.flash[l]);
+      const a = keys ? Math.max(this.press[l], this.flash[l]) : 0;
       const x = this.xAt(this.laneU(l), 0);
       // keyboard hints on the zone
       if ((s.inputHint === 'keyboard' || s.inputHint === 'gamepad') && a < 0.3) {
@@ -473,7 +488,7 @@ export class BoardRenderer {
     let best: RNote | null = null;
     for (let i = first; i < notes.length; i++) {
       const n = notes[i];
-      if (n.t > t + 0.7) break;
+      if (n.t > t + this.vis) break;
       if (n.judged !== null || n.t < t - 0.18) continue;
       const z = this.zOf(n.t - t);
       if (z > 1) continue;
