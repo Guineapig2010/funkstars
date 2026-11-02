@@ -10,7 +10,8 @@ export interface InputHandlers {
   laneUp: (lane: Lane, ts: number) => void;
   dir: (dir: SwipeDir, ts: number) => void;
   /** Pointer pressed a lane. Return true if the note under it is a swipe awaiting a gesture. */
-  touchDown: (lane: Lane, ts: number) => boolean;
+  /** Pointer pressed at (clientX, clientY). Returns whether it awaits a swipe, and the lane it belongs to (the touched tile's lane). */
+  touchDown: (lane: Lane, ts: number, clientX: number, clientY: number) => { awaiting: boolean; lane: Lane };
   swipeGesture: (lane: Lane, dx: number, dy: number, downTs: number) => void;
   /** A pointer dragged into another lane; return true if the game accepted it (switch / rail hold). */
   slide: (from: Lane, to: Lane, ts: number) => boolean;
@@ -37,7 +38,8 @@ export class InputManager {
   private keyOther = new Map<string, 'pause' | 'restart'>();
   private laneCount = [0, 0, 0];
   private keysDown = new Set<string>();
-  private pointers = new Map<number, PointerState>();
+  private pointers = new Map<string, PointerState>();
+  private useTouchEvents = typeof window !== 'undefined' && 'ontouchstart' in window;
   private padPrev: boolean[] = [];
   private padStick: SwipeDir | null = null;
   private padLane = [false, false, false];
@@ -68,8 +70,10 @@ export class InputManager {
     window.addEventListener('pointermove', this.onPointerMove, { passive: true });
     window.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('pointercancel', this.onPointerUp);
-    this.el.addEventListener('touchstart', this.prevent, { passive: false });
-    this.el.addEventListener('touchmove', this.prevent, { passive: false });
+    this.el.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    window.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    window.addEventListener('touchend', this.onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
     this.el.addEventListener('contextmenu', this.prevent);
   }
 
@@ -81,8 +85,10 @@ export class InputManager {
     window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);
-    this.el.removeEventListener('touchstart', this.prevent);
-    this.el.removeEventListener('touchmove', this.prevent);
+    this.el.removeEventListener('touchstart', this.onTouchStart);
+    window.removeEventListener('touchmove', this.onTouchMove);
+    window.removeEventListener('touchend', this.onTouchEnd);
+    window.removeEventListener('touchcancel', this.onTouchEnd);
     this.el.removeEventListener('contextmenu', this.prevent);
   }
 
@@ -126,31 +132,23 @@ export class InputManager {
     return x < a ? 0 : x < b ? 1 : 2;
   }
 
-  private onPointerDown = (e: PointerEvent) => {
-    if (!this.enabled) return;
-    const isMouse = e.pointerType === 'mouse';
-    if (isMouse ? !this.settings.mouseControls : !this.settings.touchControls) return;
-    if (isMouse && e.button !== 0) return;
-    if ((e.target as HTMLElement)?.closest?.('button, .no-game-input')) return;
-    e.preventDefault();
-    try { this.el.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
-    this.h.hint(isMouse ? 'mouse' : 'touch');
-    const lane = this.laneFromX(e.clientX, e.clientY);
-    const t = ts(e);
-    const st: PointerState = { lane, downTs: t, x0: e.clientX, y0: e.clientY, awaiting: false, done: false };
-    this.pointers.set(e.pointerId, st);
-    this.laneCount[lane]++;
-    st.awaiting = this.h.touchDown(lane, t);
-  };
-
-  private onPointerMove = (e: PointerEvent) => {
-    const st = this.pointers.get(e.pointerId);
+  // ---------- pointers & touches (shared logic, keyed per finger / mouse) ----------
+  private contactDown(id: string, x: number, y: number, t: number, kind: 'mouse' | 'touch') {
+    this.h.hint(kind);
+    const lane = this.laneFromX(x, y);
+    const r = this.h.touchDown(lane, t, x, y);
+    const st: PointerState = { lane: r.lane, downTs: t, x0: x, y0: y, awaiting: r.awaiting, done: false };
+    this.pointers.set(id, st);
+    this.laneCount[r.lane]++;
+  }
+  private contactMove(id: string, x: number, y: number, t: number) {
+    const st = this.pointers.get(id);
     if (!st || st.done) return;
-    const dx = e.clientX - st.x0, dy = e.clientY - st.y0;
+    const dx = x - st.x0, dy = y - st.y0;
     if (!st.awaiting) {
       // finger travelling across lanes: continue switch / rail holds
-      const lane = this.laneFromX(e.clientX, e.clientY);
-      if (lane !== st.lane && this.h.slide(st.lane, lane, ts(e))) {
+      const lane = this.laneFromX(x, y);
+      if (lane !== st.lane && this.h.slide(st.lane, lane, t)) {
         this.laneCount[st.lane] = Math.max(0, this.laneCount[st.lane] - 1);
         this.laneCount[lane]++;
         st.lane = lane;
@@ -160,15 +158,63 @@ export class InputManager {
     if (Math.hypot(dx, dy) < this.swipeThreshold) return;
     st.done = true;
     this.h.swipeGesture(st.lane, dx, dy, st.downTs);
+  }
+  private contactUp(id: string, t: number) {
+    const st = this.pointers.get(id);
+    if (!st) return;
+    this.pointers.delete(id);
+    if (this.laneCount[st.lane] > 0) this.laneCount[st.lane]--;
+    this.h.laneUp(st.lane, t); // one release per finger (the rules engine counts presses per lane)
+  }
+
+  /**
+   * Touch screens use raw multi-touch events: every finger is tracked independently, so a finger
+   * resting on one lane never blocks taps on the others (pointer events are unreliable for this in
+   * some mobile WebKit views). Mouse and pen use pointer events.
+   */
+  private onTouchStart = (e: TouchEvent) => {
+    if ((e.target as HTMLElement)?.closest?.('button, input, .no-game-input')) return;
+    if (e.cancelable) e.preventDefault();
+    if (!this.enabled || !this.settings.touchControls) return;
+    const t = ts(e);
+    for (const tc of Array.from(e.changedTouches)) this.contactDown('t' + tc.identifier, tc.clientX, tc.clientY, t, 'touch');
+  };
+  private onTouchMove = (e: TouchEvent) => {
+    let ours = false;
+    const t = ts(e);
+    for (const tc of Array.from(e.changedTouches)) {
+      const id = 't' + tc.identifier;
+      if (!this.pointers.has(id)) continue;
+      ours = true;
+      this.contactMove(id, tc.clientX, tc.clientY, t);
+    }
+    if (ours && e.cancelable) e.preventDefault();
+  };
+  private onTouchEnd = (e: TouchEvent) => {
+    const t = ts(e);
+    let ours = false;
+    for (const tc of Array.from(e.changedTouches)) {
+      const id = 't' + tc.identifier;
+      if (!this.pointers.has(id)) continue;
+      ours = true;
+      this.contactUp(id, t);
+    }
+    if (ours && e.cancelable) e.preventDefault();
   };
 
-  private onPointerUp = (e: PointerEvent) => {
-    const st = this.pointers.get(e.pointerId);
-    if (!st) return;
-    this.pointers.delete(e.pointerId);
-    if (this.laneCount[st.lane] > 0) this.laneCount[st.lane]--;
-    this.h.laneUp(st.lane, ts(e)); // one release per pointer (the rules engine counts presses per lane)
+  private onPointerDown = (e: PointerEvent) => {
+    if (!this.enabled) return;
+    if (e.pointerType === 'touch' && this.useTouchEvents) return; // handled by touch events
+    const isMouse = e.pointerType === 'mouse';
+    if (isMouse ? !this.settings.mouseControls : !this.settings.touchControls) return;
+    if (isMouse && e.button !== 0) return;
+    if ((e.target as HTMLElement)?.closest?.('button, .no-game-input')) return;
+    e.preventDefault();
+    try { if (isMouse) this.el.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+    this.contactDown('p' + e.pointerId, e.clientX, e.clientY, ts(e), isMouse ? 'mouse' : 'touch');
   };
+  private onPointerMove = (e: PointerEvent) => { this.contactMove('p' + e.pointerId, e.clientX, e.clientY, ts(e)); };
+  private onPointerUp = (e: PointerEvent) => { this.contactUp('p' + e.pointerId, ts(e)); };
 
   releaseAll = () => {
     const t = performance.now();

@@ -197,7 +197,7 @@ try {
     const fullHit = full.counts.perfectPlus + full.counts.perfect + full.counts.great;
     log('full song, Extreme, Classic (bot ±15 ms jitter): cleared without a miss', full.counts.miss === 0 && fullHit === full.total,
       `${fullHit}/${full.total} hits, P+ ${full.counts.perfectPlus}, score ${Math.round(full.score)}/${full.max}`);
-    await page.waitForSelector('.results', { timeout: 15000 });
+    await page.waitForSelector('.results2', { timeout: 15000 });
     await page.waitForTimeout(3500);
     await page.screenshot({ path: `${OUT}/07-results-1080p.png` });
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('funkstars.profile.v1')));

@@ -455,6 +455,42 @@ export class BoardRenderer {
     g.globalAlpha = 1;
   }
 
+  /** Height (px, before perspective) a tile is drawn at. */
+  private tileH(n: RNote, gaps: Float32Array) {
+    const size = n.type === 'tap' ? sizeOf(n) : 'regular';
+    let h = this.noteH * SIZE_SCALE[size];
+    h = Math.min(h, gaps[n.id] * this.pps * 0.88);
+    return Math.max(h, this.noteH * 0.22);
+  }
+
+  /**
+   * The tile under a touch point (canvas px), or null. Tiles are the hitbox: a touch anywhere on a
+   * tile in the lower part of the board hits it, however far it still is from the PERFECT bar.
+   */
+  noteAt(px: number, py: number, notes: RNote[], first: number, t: number): RNote | null {
+    if (px < -1000) return null;
+    const gaps = this.gaps(notes);
+    let best: RNote | null = null;
+    for (let i = first; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.t > t + 0.7) break;
+      if (n.judged !== null || n.t < t - 0.18) continue;
+      const z = this.zOf(n.t - t);
+      if (z > 1) continue;
+      const sc = this.scaleAt(z);
+      const cx = this.xAt(this.laneU(n.lane), z), cy = this.yAt(z);
+      const w = this.noteW * sc * 1.12;
+      let top = cy - (this.tileH(n, gaps) * sc) / 2, bottom = cy + (this.tileH(n, gaps) * sc) / 2;
+      const padY = Math.max(this.laneW * 0.18 * sc, ((this.laneW * 0.55 * sc) - (bottom - top)) / 2);
+      top -= padY; bottom += padY;
+      if (n.type === 'hold' && n.dur) top = Math.min(top, this.yAt(Math.min(1, this.zOf(n.t + n.dur - t))));
+      if (px >= cx - w / 2 && px <= cx + w / 2 && py >= top && py <= bottom) {
+        if (!best || n.t < best.t) best = n;
+      }
+    }
+    return best;
+  }
+
   private drawTiles(s: FrameState) {
     const end = s.t + this.vis * 1.08;
     let last = s.firstVisible;
@@ -469,10 +505,7 @@ export class BoardRenderer {
       let alpha = Math.min(1, (1.06 - z) * 6);
       if (n.judged === 'miss') { alpha *= Math.max(0, 1 + z * 3) * 0.6; if (alpha <= 0.01) continue; }
       const sc = this.scaleAt(z);
-      const size = n.type === 'tap' ? sizeOf(n) : 'regular';
-      let h = this.noteH * SIZE_SCALE[size];
-      h = Math.min(h, gaps[n.id] * this.pps * 0.88);
-      h = Math.max(h, this.noteH * 0.22) * sc;
+      const h = this.tileH(n, gaps) * sc;
       const w = this.noteW * sc;
       this.tile(this.xAt(this.laneU(n.lane), z), this.yAt(z), w, h, n.type === 'swipe' ? 'swipe' : 'tap', n.dir, alpha, n.judged === 'miss');
       if (n.type === 'swipe' && !n.judged && s.inputHint === 'keyboard' && s.dirKeyLabels) {

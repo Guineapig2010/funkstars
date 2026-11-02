@@ -130,3 +130,24 @@ describe('scoring', () => {
     expect(p.counts.perfectPlus).toBe(1);
   });
 });
+
+describe('touching the tile itself', () => {
+  it('a touched tile is hit even when it is still far above the PERFECT bar (graded GREAT)', () => {
+    const s = S([{ t: 2, lane: 1, type: 'tap' }]);
+    const n = s.notes[0];
+    s.touchDown(1, 1.45, n);
+    expect(n.judged).toBe('great');
+  });
+  it('a touched tile near the bar still gets PERFECT+', () => {
+    const s = S([{ t: 2, lane: 1, type: 'tap' }]);
+    s.touchDown(1, 1.99, s.notes[0]);
+    expect(s.notes[0].judged).toBe('perfectPlus');
+  });
+  it('touching a swipe tile then flicking hits it', () => {
+    const s = S([{ t: 2, lane: 0, type: 'swipe', dir: 'up' }]);
+    const n = s.notes[0];
+    expect(s.touchDown(0, 1.5, n).awaitingSwipe).toBe(true);
+    s.swipeGesture(0, 0, -40, 1.5, n);
+    expect(n.judged).toBe('great');
+  });
+});

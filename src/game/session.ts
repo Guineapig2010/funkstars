@@ -145,13 +145,18 @@ export class GameSession {
     return a.length ? a[Math.floor(a.length / 2)] : null;
   }
 
-  pressLane(lane: Lane, t: number): RNote | null {
+  /**
+   * Press a lane. `forced` = the tile the player physically touched: it is hit regardless of how far it
+   * still is from the PERFECT bar (an early touch grades as GREAT).
+   */
+  pressLane(lane: Lane, t: number, forced?: RNote | null): RNote | null {
     this.down[lane]++;
     this.recordDelta(lane, t);
     if (this.failed) return null;
-    if (this.transitionTarget(lane, t)) { this.updateHolds(t); return null; }
-    const n = this.candidate(lane, t);
+    if (!forced && this.transitionTarget(lane, t)) { this.updateHolds(t); return null; }
+    const n = forced && forced.judged === null ? forced : this.candidate(lane, t);
     if (!n) return null;
+    if (forced && n === forced && t - n.t < -WINDOWS.early) t = n.t - WINDOWS.early;
     if (n.type === 'swipe') {
       if (this.swipeMode === 'lane') { this.hit(n, t - n.t); return n; }
       if (this.swipeMode === 'direction') return null;
@@ -253,22 +258,23 @@ export class GameSession {
   }
 
   /** Touch / mouse swipe gesture (any angle), timed at touch-down. */
-  swipeGesture(lane: Lane, dx: number, dy: number, downT: number): RNote | null {
+  swipeGesture(lane: Lane, dx: number, dy: number, downT: number, forced?: RNote | null): RNote | null {
     if (this.failed) return null;
-    const n = this.candidate(lane, downT);
+    const n = forced && forced.judged === null ? forced : this.candidate(lane, downT);
     if (!n || n.type !== 'swipe') return null;
+    if (forced && n === forced && downT - n.t < -WINDOWS.early) downT = n.t - WINDOWS.early;
     if (Math.abs(downT - n.t) < 0.3) this.pressDeltas.push(downT - n.t);
     if (gestureMatches(n.dir ?? 'up', dx, dy)) this.hit(n, downT - n.t); else this.miss(n);
     return n;
   }
 
   /** Touch-down on a lane: taps & holds hit immediately; swipe notes wait for the gesture. */
-  touchDown(lane: Lane, t: number): { note: RNote | null; awaitingSwipe: boolean } {
-    if (!this.failed && !this.transitionTarget(lane, t)) {
-      const n = this.candidate(lane, t);
+  touchDown(lane: Lane, t: number, forced?: RNote | null): { note: RNote | null; awaitingSwipe: boolean } {
+    if (!this.failed && (forced || !this.transitionTarget(lane, t))) {
+      const n = forced && forced.judged === null ? forced : this.candidate(lane, t);
       if (n && n.type === 'swipe' && this.swipeMode !== 'lane') { this.down[lane]++; return { note: n, awaitingSwipe: true }; }
     }
-    return { note: this.pressLane(lane, t), awaitingSwipe: false };
+    return { note: this.pressLane(lane, t, forced), awaitingSwipe: false };
   }
 
   isLaneDown(l: Lane) { return this.down[l] > 0; }

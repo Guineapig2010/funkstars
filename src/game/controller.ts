@@ -116,7 +116,7 @@ export class GameController {
       laneDown: (l, ts) => this.onLaneDown(l, ts),
       laneUp: (l, ts) => this.onLaneUp(l, ts),
       dir: (d, ts) => this.onDir(d, ts),
-      touchDown: (l, ts) => this.onTouchDown(l, ts),
+      touchDown: (l, ts, x, y) => this.onTouchDown(l, ts, x, y),
       swipeGesture: (l, dx, dy, ts) => this.onSwipe(l, dx, dy, ts),
       slide: (from, to, ts) => this.onSlide(from, to, ts),
       pause: () => (this.paused ? this.resume() : this.pause()),
@@ -212,11 +212,25 @@ export class GameController {
   private onLaneDown(l: Lane, ts: number) { if (this.canInput()) this.session.pressLane(l, this.inputTime(ts)); }
   private onLaneUp(l: Lane, ts: number) { if (!this.finished) this.session.releaseLane(l, this.inputTime(ts)); }
   private onDir(d: SwipeDir, ts: number) { if (this.canInput()) this.session.direction(d, this.inputTime(ts)); }
-  private onTouchDown(l: Lane, ts: number) {
-    if (!this.canInput()) return false;
-    return this.session.touchDown(l, this.inputTime(ts)).awaitingSwipe;
+  /** Swipe tiles touched directly, waiting for their flick (per lane). */
+  private swipeTargets = new Map<Lane, RNote>();
+  private onTouchDown(l: Lane, ts: number, x: number, y: number): { awaiting: boolean; lane: Lane } {
+    if (!this.canInput()) return { awaiting: false, lane: l };
+    // the tile under the finger is the hitbox (not the PERFECT bar)
+    const rect = this.canvas.getBoundingClientRect();
+    const rd = this.renderer;
+    const touched = 'noteAt' in rd ? rd.noteAt(x - rect.left, y - rect.top, this.notes, this.firstVisible, this.player.songTime(ts)) : null;
+    const lane = touched ? touched.lane : l;
+    const r = this.session.touchDown(lane, this.inputTime(ts), touched);
+    if (r.awaitingSwipe && r.note) this.swipeTargets.set(lane, r.note); else this.swipeTargets.delete(lane);
+    return { awaiting: r.awaitingSwipe, lane };
   }
-  private onSwipe(l: Lane, dx: number, dy: number, ts: number) { if (this.canInput()) this.session.swipeGesture(l, dx, dy, this.inputTime(ts)); }
+  private onSwipe(l: Lane, dx: number, dy: number, ts: number) {
+    if (!this.canInput()) return;
+    const forced = this.swipeTargets.get(l) ?? null;
+    this.swipeTargets.delete(l);
+    this.session.swipeGesture(l, dx, dy, this.inputTime(ts), forced);
+  }
   private onSlide(from: Lane, to: Lane, ts: number) { return this.canInput() ? this.session.slide(from, to, this.inputTime(ts)) : false; }
 
   private stageAt(t: number) {
@@ -480,7 +494,7 @@ export class GameController {
     if (kind === 'down') this.onLaneDown(lane, ts);
     else if (kind === 'up') this.onLaneUp(lane, ts);
     else if (kind === 'dir') this.onDir(dir, ts);
-    else if (kind === 'touch') this.onTouchDown(lane, ts);
+    else if (kind === 'touch') this.onTouchDown(lane, ts, -9999, -9999);
     else { const v = DIR_VEC[dir]; this.onSwipe(lane, v[0] * 50, v[1] * 50, ts); }
   }
 
