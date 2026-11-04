@@ -9,18 +9,18 @@
    "tag": "Super Slowed",
    "fileName": "MOMS CALLING FUNK (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/moms-calling-funk.mp3",
-   "chartUrl": "songs/charts/moms-calling-funk.json?v=8492606ea5",
+   "chartUrl": "songs/charts/moms-calling-funk.json?v=5beb7e3d3b",
    "duration": 131.04,
-   "bpm": 95.23,
+   "bpm": 95.24,
    "levels": {
     "normal": 4,
-    "hard": 6,
-    "extreme": 8
+    "hard": 7,
+    "extreme": 9
    },
    "noteCounts": {
-    "normal": 160,
-    "hard": 271,
-    "extreme": 369
+    "normal": 156,
+    "hard": 272,
+    "extreme": 371
    },
    "theme": {
     "colors": [
@@ -33,7 +33,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200000,
-   "previewStart": 21.423144828771616
+   "previewStart": 21.42216760040486
   },
   {
    "id": "until-im-dead",
@@ -43,7 +43,7 @@
    "tag": "Super Slowed",
    "fileName": "Until I'm Dead (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/until-im-dead.mp3",
-   "chartUrl": "songs/charts/until-im-dead.json?v=ad480cb9e3",
+   "chartUrl": "songs/charts/until-im-dead.json?v=63b38215e8",
    "duration": 127.19,
    "bpm": 91.92,
    "levels": {
@@ -52,9 +52,9 @@
     "extreme": 8
    },
    "noteCounts": {
-    "normal": 136,
-    "hard": 237,
-    "extreme": 332
+    "normal": 131,
+    "hard": 233,
+    "extreme": 331
    },
    "theme": {
     "colors": [
@@ -67,7 +67,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200001,
-   "previewStart": 10.444527684901402
+   "previewStart": 10.443025001756256
   },
   {
    "id": "montagem-bandido",
@@ -77,18 +77,18 @@
    "tag": "Super Slowed",
    "fileName": "Montagem Bandido (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/montagem-bandido.mp3",
-   "chartUrl": "songs/charts/montagem-bandido.json?v=14ba549fb0",
+   "chartUrl": "songs/charts/montagem-bandido.json?v=980d96c986",
    "duration": 109.56,
    "bpm": 107.15,
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 8
+    "extreme": 9
    },
    "noteCounts": {
-    "normal": 130,
-    "hard": 229,
-    "extreme": 308
+    "normal": 128,
+    "hard": 228,
+    "extreme": 312
    },
    "theme": {
     "colors": [
@@ -101,7 +101,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200002,
-   "previewStart": 17.91940183723493
+   "previewStart": 17.91871796182603
   },
   {
    "id": "subaru-ladder-funk",
@@ -110,18 +110,18 @@
    "genre": "Brazilian Phonk",
    "fileName": "SUBARU LADDER FUNK(1).mp3",
    "audioUrl": "songs/audio/subaru-ladder-funk.mp3",
-   "chartUrl": "songs/charts/subaru-ladder-funk.json?v=3600f51aa7",
+   "chartUrl": "songs/charts/subaru-ladder-funk.json?v=5a2b76f4da",
    "duration": 81.23,
-   "bpm": 129.99,
+   "bpm": 130,
    "levels": {
-    "normal": 4,
+    "normal": 5,
     "hard": 7,
-    "extreme": 10
+    "extreme": 11
    },
    "noteCounts": {
-    "normal": 98,
-    "hard": 174,
-    "extreme": 257
+    "normal": 103,
+    "hard": 176,
+    "extreme": 260
    },
    "theme": {
     "colors": [
@@ -134,7 +134,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200003,
-   "previewStart": 17.99491552273999
+   "previewStart": 17.995442095617847
   },
   {
    "id": "virou",
@@ -143,18 +143,18 @@
    "genre": "Brazilian Funk",
    "fileName": "virou 1.mp3",
    "audioUrl": "songs/audio/virou.mp3",
-   "chartUrl": "songs/charts/virou.json?v=c59ce9e2da",
+   "chartUrl": "songs/charts/virou.json?v=73203d057f",
    "duration": 73.39,
-   "bpm": 134.98,
+   "bpm": 135,
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 9
+    "extreme": 10
    },
    "noteCounts": {
-    "normal": 91,
-    "hard": 165,
-    "extreme": 228
+    "normal": 93,
+    "hard": 159,
+    "extreme": 233
    },
    "theme": {
     "colors": [
@@ -167,7 +167,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200004,
-   "previewStart": 15.112578371805347
+   "previewStart": 15.110090932430877
   },
   {
    "id": "montagem-camera-lenta",
@@ -177,18 +177,18 @@
    "tag": "Lyric Video Edit",
    "fileName": "MONTAGEM CAMERA LENTA Funk Lyric Video (English + Portuguese)(1).mp3",
    "audioUrl": "songs/audio/montagem-camera-lenta.mp3",
-   "chartUrl": "songs/charts/montagem-camera-lenta.json?v=d28368fa84",
+   "chartUrl": "songs/charts/montagem-camera-lenta.json?v=a72c7da1ac",
    "duration": 170.95,
-   "bpm": 129.99,
+   "bpm": 130,
    "levels": {
     "normal": 4,
     "hard": 7,
     "extreme": 10
    },
    "noteCounts": {
-    "normal": 220,
-    "hard": 395,
-    "extreme": 560
+    "normal": 224,
+    "hard": 397,
+    "extreme": 553
    },
    "theme": {
     "colors": [
@@ -201,7 +201,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200005,
-   "previewStart": 88.69030014911654
+   "previewStart": 88.69123718121885
   },
   {
    "id": "last-chance-funk",
@@ -211,18 +211,18 @@
    "tag": "Alt Version · Ultra Slowed",
    "fileName": "LAST CHANCE FUNK (Alt Version Ultra Slowed)(2).mp3",
    "audioUrl": "songs/audio/last-chance-funk.mp3",
-   "chartUrl": "songs/charts/last-chance-funk.json?v=2e0f483f7e",
+   "chartUrl": "songs/charts/last-chance-funk.json?v=6359455bd5",
    "duration": 115.59,
    "bpm": 74.76,
    "levels": {
-    "normal": 3,
+    "normal": 4,
     "hard": 6,
     "extreme": 8
    },
    "noteCounts": {
-    "normal": 126,
-    "hard": 210,
-    "extreme": 292
+    "normal": 128,
+    "hard": 208,
+    "extreme": 289
    },
    "theme": {
     "colors": [
@@ -235,7 +235,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200006,
-   "previewStart": 8.025493614792769
+   "previewStart": 8.024053887657184
   },
   {
    "id": "faixa-rosa",
@@ -245,7 +245,7 @@
    "tag": "Slowed",
    "fileName": "Faixa Rosa (Slowed) - Jmilton x Ogryzek(2).mp3",
    "audioUrl": "songs/audio/faixa-rosa.mp3",
-   "chartUrl": "songs/charts/faixa-rosa.json?v=5cb060ba5c",
+   "chartUrl": "songs/charts/faixa-rosa.json?v=42e02fc74c",
    "duration": 109.44,
    "bpm": 72.48,
    "levels": {
@@ -279,18 +279,18 @@
    "tag": "Super Slowed",
    "fileName": "PERSONA FUNK - SUPER SLOWED(2).mp3",
    "audioUrl": "songs/audio/persona-funk.mp3",
-   "chartUrl": "songs/charts/persona-funk.json?v=6ebb627bae",
+   "chartUrl": "songs/charts/persona-funk.json?v=eaab0aeb30",
    "duration": 144.31,
-   "bpm": 103.17,
+   "bpm": 103.18,
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 9
+    "extreme": 10
    },
    "noteCounts": {
     "normal": 163,
     "hard": 294,
-    "extreme": 441
+    "extreme": 445
    },
    "theme": {
     "colors": [
@@ -303,7 +303,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200008,
-   "previewStart": 61.4013518935179
+   "previewStart": 61.401664193515764
   },
   {
    "id": "sem-demora",
@@ -313,9 +313,9 @@
    "tag": "Ultra Slowed",
    "fileName": "SEM DEMORA (Ultra Slowed)(2).mp3",
    "audioUrl": "songs/audio/sem-demora.mp3",
-   "chartUrl": "songs/charts/sem-demora.json?v=4cc8ee9230",
+   "chartUrl": "songs/charts/sem-demora.json?v=2e9718ab36",
    "duration": 130.88,
-   "bpm": 134.95,
+   "bpm": 134.93,
    "levels": {
     "normal": 4,
     "hard": 7,
@@ -323,8 +323,8 @@
    },
    "noteCounts": {
     "normal": 144,
-    "hard": 261,
-    "extreme": 384
+    "hard": 259,
+    "extreme": 390
    },
    "theme": {
     "colors": [
@@ -337,7 +337,7 @@
    },
    "source": "builtin",
    "addedAt": 1793491200009,
-   "previewStart": 27.565310196463376
+   "previewStart": 27.567616988915997
   },
   {
    "id": "first-light",
@@ -347,18 +347,18 @@
    "tag": "Tutorial",
    "fileName": "first-light.mp3",
    "audioUrl": "songs/audio/first-light.mp3",
-   "chartUrl": "songs/charts/first-light.json?v=3a932766fd",
+   "chartUrl": "songs/charts/first-light.json?v=672ae60c7e",
    "duration": 89.21,
-   "bpm": 112.01,
+   "bpm": 112,
    "levels": {
     "normal": 4,
     "hard": 7,
     "extreme": 9
    },
    "noteCounts": {
-    "normal": 99,
-    "hard": 176,
-    "extreme": 260
+    "normal": 100,
+    "hard": 174,
+    "extreme": 257
    },
    "theme": {
     "colors": [
@@ -371,7 +371,7 @@
    },
    "source": "demo",
    "addedAt": 1793491200010,
-   "previewStart": 28.355108388875113
+   "previewStart": 28.35461471305871
   }
  ]
 }

@@ -24,6 +24,9 @@ interface PointerState { lane: Lane; downTs: number; x0: number; y0: number; awa
 
 const DIRS: SwipeDir[] = ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'];
 
+/** Assumed press length (ms) of a tap whose touchstart was never delivered. */
+const GHOST_TAP_MS = 60;
+
 function ts(e: Event): number {
   const now = performance.now();
   const t = e.timeStamp;
@@ -177,7 +180,10 @@ export class InputManager {
    * resting on one lane never blocks taps on the others (pointer events are unreliable for this in
    * some mobile WebKit views). Mouse and pen use pointer events.
    */
+  /** Finger ids whose start we have seen (game or UI), so a lift of an unseen finger can be recovered. */
+  private seenTouches = new Set<number>();
   private onTouchStart = (e: TouchEvent) => {
+    for (const tc of Array.from(e.changedTouches)) this.seenTouches.add(tc.identifier);
     if ((e.target as HTMLElement)?.closest?.('button, input, .no-game-input')) { this.reconcile(e); return; }
     if (e.cancelable) e.preventDefault();
     if (!this.enabled || !this.settings.touchControls) return;
@@ -204,6 +210,8 @@ export class InputManager {
     for (const tc of Array.from(e.touches)) {
       const id = 't' + tc.identifier;
       live.add(id);
+      if (this.seenTouches.has(tc.identifier) && !this.pointers.has(id)) continue; // a UI touch, or one already lifted
+      this.seenTouches.add(tc.identifier);
       if (!this.pointers.has(id) && this.onField(tc)) this.contactDown(id, tc.clientX, tc.clientY, t, 'touch');
     }
     for (const id of [...this.pointers.keys()]) if (id.startsWith('t') && !live.has(id)) this.contactUp(id, t);
@@ -225,9 +233,15 @@ export class InputManager {
     let ours = false;
     for (const tc of Array.from(e.changedTouches)) {
       const id = 't' + tc.identifier;
-      if (!this.pointers.has(id)) continue;
-      ours = true;
-      this.contactUp(id, t);
+      const seen = this.seenTouches.delete(tc.identifier);
+      if (this.pointers.has(id)) { ours = true; this.contactUp(id, t); continue; }
+      // iOS sometimes drops the touchstart of a second finger while another is held down and only
+      // reports the lift. Recover it as a tap that started a typical tap-length earlier.
+      if (!seen && e.type === 'touchend' && this.enabled && this.settings.touchControls && this.onField(tc)) {
+        ours = true;
+        this.contactDown(id, tc.clientX, tc.clientY, t - GHOST_TAP_MS, 'touch');
+        this.contactUp(id, t);
+      }
     }
     if (ours && e.cancelable) e.preventDefault();
     this.reconcile(e);

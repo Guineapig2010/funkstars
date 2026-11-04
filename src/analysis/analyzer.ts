@@ -4,7 +4,7 @@ import {
   computeFeatures, frameTime, highpassEnv, normalizeEnv, percentile, smooth, timeToFrame, maxAround, sampleAt,
   type Features,
 } from './features';
-import { estimateTempo, extendBeats, trackBeats } from './tempo';
+import { estimateTempo, extendBeats, lockGrid, trackBeats } from './tempo';
 import { makeEnvSignature } from './align';
 
 export interface AnalysisResult {
@@ -64,6 +64,9 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
     }
     beats = beats.map((b) => b + bestD).filter((b) => b >= 0);
   }
+  // constant-tempo songs: snap to one perfectly even grid
+  const lock = lockGrid(beats, duration);
+  beats = lock.beats;
   // kick drum hits (low-band onset peaks): the pulse players feel
   const peaksOf = (e: Float32Array, pct: number, r = 4) => {
     const thr = percentile(e, pct);
@@ -246,6 +249,7 @@ export function analyzeAudio(mono: Float32Array, sampleRate: number, opts: Analy
     beatConfidence: Math.round(beatConfidence * 100) / 100,
     grooveStart: grooveStart >= 0 ? Math.round(grooveStart * 10000) / 10000 : undefined,
     subdivision,
+    tempoLocked: lock.locked,
   };
   prog(1, 'Done');
   return { analysis, features: f, env, loud };

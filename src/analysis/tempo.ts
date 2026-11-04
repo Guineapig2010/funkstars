@@ -173,3 +173,25 @@ export function extendBeats(beats: number[], end: number): number[] {
   while (out[out.length - 1] + p1 < end + p1) out.push(out[out.length - 1] + p1);
   return out;
 }
+
+/**
+ * Most produced music runs at one fixed tempo. If the tracked beats fit a single constant grid
+ * (≥ 80% of beats within ±15 ms), replace them with that exact grid so every beat is perfectly even
+ * and local tracker wobble (breakdowns, outros) disappears. Otherwise the beats are returned as-is.
+ */
+export function lockGrid(beats: number[], end: number): { beats: number[]; locked: boolean } {
+  if (beats.length < 16) return { beats, locked: false };
+  let mask: boolean[] | null = null;
+  let fit = linFit(beats, 0, beats.length - 1, null);
+  for (const tol of [0.06, 0.03, 0.015]) {
+    mask = beats.map((b, i) => Math.abs(b - (fit.m * i + fit.c)) <= tol);
+    if (mask.filter(Boolean).length < beats.length * 0.5) return { beats, locked: false };
+    fit = linFit(beats, 0, beats.length - 1, mask);
+  }
+  const inl = beats.filter((b, i) => Math.abs(b - (fit.m * i + fit.c)) <= 0.015).length / beats.length;
+  if (inl < 0.8 || fit.m <= 0) return { beats, locked: false };
+  const out: number[] = [];
+  const i0 = Math.ceil(-fit.c / fit.m);
+  for (let i = i0; fit.m * i + fit.c <= end + 1e-6; i++) out.push(fit.m * i + fit.c);
+  return { beats: out, locked: true };
+}

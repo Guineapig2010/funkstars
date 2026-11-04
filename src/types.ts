@@ -71,6 +71,8 @@ export interface SongAnalysis {
   beatConfidence: number;
   /** Beat subdivision feel: 4 = straight (16ths), 3 = triplet / compound (12/8 swing). */
   subdivision?: 3 | 4;
+  /** beats were snapped to a single constant-tempo grid */
+  tempoLocked?: boolean;
   /** Time of the first bar where the drums / groove start (charts begin here). */
   grooveStart?: number;
 }

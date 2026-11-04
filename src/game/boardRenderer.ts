@@ -4,7 +4,7 @@
 import type { Judgment, Lane, TileSize } from '../types';
 import type { RNote } from './session';
 import type { FrameState, RenderOptions } from './renderer';
-import { lowerBound } from './renderer';
+import { lowerBound, tempoScale } from './renderer';
 import { Particles } from './particles';
 import { glowSprite, rgba, roundRect, lighten, darken } from './sprites';
 import { DIR_VEC, SIZE_SCALE, holdLanePos, sizeOf, sortedPath, isDiagonal } from './notes';
@@ -47,10 +47,8 @@ export class BoardRenderer {
   }
 
   setSpeed(speed: number) {
-    // time on screen scales with the beat length, so tiles move at the speed of the song
-    const base = 2.3 / (0.5 + speed * 0.15);
-    const beat = 60 / (this.opts?.bpm || 110);
-    this.vis = base * Math.max(0.72, Math.min(1.45, beat / 0.545));
+    // time on screen scales with the song tempo, so tiles fall faster on faster songs
+    this.vis = 2.3 / (0.5 + speed * 0.15) * tempoScale(this.opts?.bpm);
   }
   setOptions(o: Partial<RenderOptions>) { this.opts = { ...this.opts, ...o }; this.setSpeed(this.opts.noteSpeed); }
 

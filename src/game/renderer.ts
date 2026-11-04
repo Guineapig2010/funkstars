@@ -103,7 +103,7 @@ export class Renderer {
   }
 
   setSpeed(speed: number) {
-    this.vis = 2.6 / (0.5 + speed * 0.15);
+    this.vis = 2.6 / (0.5 + speed * 0.15) * tempoScale(this.opts?.bpm);
   }
 
   setOptions(o: Partial<RenderOptions>) {
@@ -1018,4 +1018,14 @@ export function lowerBound(arr: ArrayLike<number>, v: number) {
   let lo = 0, hi = arr.length;
   while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; }
   return lo;
+}
+
+/**
+ * Screen-time multiplier from the song tempo: faster songs scroll faster, slower songs slower.
+ * 95 BPM = 1×; steeper than linear so tempo differences are clearly felt
+ * (135 BPM ≈ 0.62× screen time, i.e. tiles fall ~1.6× faster; 75 BPM and below ≈ 1.15×).
+ */
+export function tempoScale(bpm?: number): number {
+  if (!bpm || !isFinite(bpm) || bpm <= 0) return 1;
+  return Math.max(0.55, Math.min(1.15, Math.pow(95 / bpm, 1.35)));
 }

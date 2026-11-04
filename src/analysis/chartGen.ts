@@ -81,7 +81,7 @@ interface Ev {
   path?: PathPoint[];
 }
 
-export const GENERATOR_VERSION = 'funkstars-chartgen/2.2';
+export const GENERATOR_VERSION = 'funkstars-chartgen/2.3';
 
 export function generateCharts(res: AnalysisResult, songId: string): Record<Difficulty, Chart> {
   return {
