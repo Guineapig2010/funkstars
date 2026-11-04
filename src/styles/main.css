@@ -753,3 +753,5 @@ input[type='range']::-moz-range-thumb { width: 22px; height: 22px; border-radius
 .song-card-row { width: 100%; }
 .duration { right: 0; bottom: 4px; border-radius: 999px; }
 .src-badge { left: 50%; top: -4px; transform: translateX(-50%); border-radius: 999px; }
+/* during play the whole page refuses browser gestures, so every finger goes to the game */
+html.playing, html.playing body { touch-action: none; overscroll-behavior: none; }

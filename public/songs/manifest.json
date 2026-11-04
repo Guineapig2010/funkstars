@@ -9,18 +9,18 @@
    "tag": "Super Slowed",
    "fileName": "MOMS CALLING FUNK (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/moms-calling-funk.mp3",
-   "chartUrl": "songs/charts/moms-calling-funk.json?v=7babae9e8c",
+   "chartUrl": "songs/charts/moms-calling-funk.json?v=8492606ea5",
    "duration": 131.04,
    "bpm": 95.23,
    "levels": {
     "normal": 4,
     "hard": 6,
-    "extreme": 9
+    "extreme": 8
    },
    "noteCounts": {
-    "normal": 159,
-    "hard": 276,
-    "extreme": 392
+    "normal": 160,
+    "hard": 271,
+    "extreme": 369
    },
    "theme": {
     "colors": [
@@ -43,18 +43,18 @@
    "tag": "Super Slowed",
    "fileName": "Until I'm Dead (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/until-im-dead.mp3",
-   "chartUrl": "songs/charts/until-im-dead.json?v=aedd6e7320",
+   "chartUrl": "songs/charts/until-im-dead.json?v=ad480cb9e3",
    "duration": 127.19,
    "bpm": 91.92,
    "levels": {
-    "normal": 3,
+    "normal": 4,
     "hard": 6,
     "extreme": 8
    },
    "noteCounts": {
     "normal": 136,
-    "hard": 232,
-    "extreme": 340
+    "hard": 237,
+    "extreme": 332
    },
    "theme": {
     "colors": [
@@ -77,18 +77,18 @@
    "tag": "Super Slowed",
    "fileName": "Montagem Bandido (Super Slowed)(1).mp3",
    "audioUrl": "songs/audio/montagem-bandido.mp3",
-   "chartUrl": "songs/charts/montagem-bandido.json?v=25eaffa7bd",
+   "chartUrl": "songs/charts/montagem-bandido.json?v=14ba549fb0",
    "duration": 109.56,
    "bpm": 107.15,
    "levels": {
     "normal": 4,
-    "hard": 6,
-    "extreme": 9
+    "hard": 7,
+    "extreme": 8
    },
    "noteCounts": {
-    "normal": 128,
-    "hard": 226,
-    "extreme": 316
+    "normal": 130,
+    "hard": 229,
+    "extreme": 308
    },
    "theme": {
     "colors": [
@@ -110,18 +110,18 @@
    "genre": "Brazilian Phonk",
    "fileName": "SUBARU LADDER FUNK(1).mp3",
    "audioUrl": "songs/audio/subaru-ladder-funk.mp3",
-   "chartUrl": "songs/charts/subaru-ladder-funk.json?v=3c63d20f8f",
+   "chartUrl": "songs/charts/subaru-ladder-funk.json?v=3600f51aa7",
    "duration": 81.23,
    "bpm": 129.99,
    "levels": {
     "normal": 4,
-    "hard": 8,
-    "extreme": 11
+    "hard": 7,
+    "extreme": 10
    },
    "noteCounts": {
     "normal": 98,
-    "hard": 175,
-    "extreme": 262
+    "hard": 174,
+    "extreme": 257
    },
    "theme": {
     "colors": [
@@ -143,18 +143,18 @@
    "genre": "Brazilian Funk",
    "fileName": "virou 1.mp3",
    "audioUrl": "songs/audio/virou.mp3",
-   "chartUrl": "songs/charts/virou.json?v=3ba4433e06",
+   "chartUrl": "songs/charts/virou.json?v=c59ce9e2da",
    "duration": 73.39,
    "bpm": 134.98,
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 10
+    "extreme": 9
    },
    "noteCounts": {
     "normal": 91,
-    "hard": 159,
-    "extreme": 244
+    "hard": 165,
+    "extreme": 228
    },
    "theme": {
     "colors": [
@@ -177,7 +177,7 @@
    "tag": "Lyric Video Edit",
    "fileName": "MONTAGEM CAMERA LENTA Funk Lyric Video (English + Portuguese)(1).mp3",
    "audioUrl": "songs/audio/montagem-camera-lenta.mp3",
-   "chartUrl": "songs/charts/montagem-camera-lenta.json?v=1b24e17482",
+   "chartUrl": "songs/charts/montagem-camera-lenta.json?v=d28368fa84",
    "duration": 170.95,
    "bpm": 129.99,
    "levels": {
@@ -187,8 +187,8 @@
    },
    "noteCounts": {
     "normal": 220,
-    "hard": 391,
-    "extreme": 586
+    "hard": 395,
+    "extreme": 560
    },
    "theme": {
     "colors": [
@@ -211,18 +211,18 @@
    "tag": "Alt Version · Ultra Slowed",
    "fileName": "LAST CHANCE FUNK (Alt Version Ultra Slowed)(2).mp3",
    "audioUrl": "songs/audio/last-chance-funk.mp3",
-   "chartUrl": "songs/charts/last-chance-funk.json?v=aa8949bd8b",
+   "chartUrl": "songs/charts/last-chance-funk.json?v=2e0f483f7e",
    "duration": 115.59,
    "bpm": 74.76,
    "levels": {
-    "normal": 4,
+    "normal": 3,
     "hard": 6,
     "extreme": 8
    },
    "noteCounts": {
-    "normal": 134,
-    "hard": 223,
-    "extreme": 320
+    "normal": 126,
+    "hard": 210,
+    "extreme": 292
    },
    "theme": {
     "colors": [
@@ -245,7 +245,7 @@
    "tag": "Slowed",
    "fileName": "Faixa Rosa (Slowed) - Jmilton x Ogryzek(2).mp3",
    "audioUrl": "songs/audio/faixa-rosa.mp3",
-   "chartUrl": "songs/charts/faixa-rosa.json?v=589cdabda3",
+   "chartUrl": "songs/charts/faixa-rosa.json?v=5cb060ba5c",
    "duration": 109.44,
    "bpm": 72.48,
    "levels": {
@@ -255,8 +255,8 @@
    },
    "noteCounts": {
     "normal": 121,
-    "hard": 233,
-    "extreme": 365
+    "hard": 226,
+    "extreme": 348
    },
    "theme": {
     "colors": [
@@ -279,18 +279,18 @@
    "tag": "Super Slowed",
    "fileName": "PERSONA FUNK - SUPER SLOWED(2).mp3",
    "audioUrl": "songs/audio/persona-funk.mp3",
-   "chartUrl": "songs/charts/persona-funk.json?v=20160bbed4",
+   "chartUrl": "songs/charts/persona-funk.json?v=6ebb627bae",
    "duration": 144.31,
    "bpm": 103.17,
    "levels": {
     "normal": 4,
     "hard": 7,
-    "extreme": 10
+    "extreme": 9
    },
    "noteCounts": {
-    "normal": 165,
-    "hard": 296,
-    "extreme": 448
+    "normal": 163,
+    "hard": 294,
+    "extreme": 441
    },
    "theme": {
     "colors": [
@@ -313,7 +313,7 @@
    "tag": "Ultra Slowed",
    "fileName": "SEM DEMORA (Ultra Slowed)(2).mp3",
    "audioUrl": "songs/audio/sem-demora.mp3",
-   "chartUrl": "songs/charts/sem-demora.json?v=eba3857dba",
+   "chartUrl": "songs/charts/sem-demora.json?v=4cc8ee9230",
    "duration": 130.88,
    "bpm": 134.95,
    "levels": {
@@ -322,9 +322,9 @@
     "extreme": 10
    },
    "noteCounts": {
-    "normal": 146,
-    "hard": 268,
-    "extreme": 396
+    "normal": 144,
+    "hard": 261,
+    "extreme": 384
    },
    "theme": {
     "colors": [
@@ -347,7 +347,7 @@
    "tag": "Tutorial",
    "fileName": "first-light.mp3",
    "audioUrl": "songs/audio/first-light.mp3",
-   "chartUrl": "songs/charts/first-light.json?v=3f3bc62eea",
+   "chartUrl": "songs/charts/first-light.json?v=3a932766fd",
    "duration": 89.21,
    "bpm": 112.01,
    "levels": {
@@ -357,8 +357,8 @@
    },
    "noteCounts": {
     "normal": 99,
-    "hard": 178,
-    "extreme": 264
+    "hard": 176,
+    "extreme": 260
    },
    "theme": {
     "colors": [

@@ -37,22 +37,22 @@ interface GenParams {
 
 const PARAMS: Record<Difficulty, GenParams> = {
   normal: {
-    baseNps: 1.1, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 2, eighthThr: 1.1, sixteenthThr: 9,
+    baseNps: 1.1, stageMult: [0.8, 0.9, 1.0, 1.08, 1.18], maxLevel: 1, eighthThr: 9, sixteenthThr: 9,
     minGap: 0.36, maxGapBeats: 4, holdChance: 0.6, holdMinGap: 1.15, overlapHoldChance: 0,
     swipeChance: 0.07, doubleChance: 0.5, doubleQuantile: 0.985,
     burstChance: 0, burstThr: 9, maxBurst: 0, halfGap: 0.46, diagChance: 0, pathChance: 0, pathMinBeats: 99,
   },
   hard: {
-    baseNps: 2.0, stageMult: [0.78, 0.9, 1.0, 1.1, 1.22], maxLevel: 3, eighthThr: 0.3, sixteenthThr: 0.85,
+    baseNps: 2.0, stageMult: [0.78, 0.9, 1.0, 1.1, 1.22], maxLevel: 2, eighthThr: 0.35, sixteenthThr: 9,
     minGap: 0.18, maxGapBeats: 3, holdChance: 0.5, holdMinGap: 0.8, overlapHoldChance: 0.18,
     swipeChance: 0.1, doubleChance: 0.55, doubleQuantile: 0.93,
-    burstChance: 0.15, burstThr: 0.75, maxBurst: 1, halfGap: 0.29, diagChance: 0.25, pathChance: 0.6, pathMinBeats: 1.4,
+    burstChance: 0, burstThr: 9, maxBurst: 0, halfGap: 0.29, diagChance: 0.25, pathChance: 0.6, pathMinBeats: 1.4,
   },
   extreme: {
-    baseNps: 3.0, stageMult: [0.8, 0.92, 1.0, 1.12, 1.26], maxLevel: 3, eighthThr: 0.12, sixteenthThr: 0.5,
+    baseNps: 3.0, stageMult: [0.8, 0.92, 1.0, 1.12, 1.26], maxLevel: 3, eighthThr: 0.2, sixteenthThr: 0.65,
     minGap: 0.115, maxGapBeats: 2, holdChance: 0.45, holdMinGap: 0.62, overlapHoldChance: 0.3,
     swipeChance: 0.13, doubleChance: 0.6, doubleQuantile: 0.86,
-    burstChance: 0.35, burstThr: 0.55, maxBurst: 2, halfGap: 0.27, diagChance: 0.35, pathChance: 0.75, pathMinBeats: 1.0,
+    burstChance: 0.2, burstThr: 0.7, maxBurst: 1, halfGap: 0.27, diagChance: 0.35, pathChance: 0.75, pathMinBeats: 1.0,
   },
 };
 
@@ -81,7 +81,7 @@ interface Ev {
   path?: PathPoint[];
 }
 
-export const GENERATOR_VERSION = 'funkstars-chartgen/2.1';
+export const GENERATOR_VERSION = 'funkstars-chartgen/2.2';
 
 export function generateCharts(res: AnalysisResult, songId: string): Record<Difficulty, Chart> {
   return {

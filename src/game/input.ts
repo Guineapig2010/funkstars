@@ -75,6 +75,9 @@ export class InputManager {
     window.addEventListener('touchend', this.onTouchEnd, { passive: false });
     window.addEventListener('touchcancel', this.onTouchEnd, { passive: false });
     this.el.addEventListener('contextmenu', this.prevent);
+    // iOS: never let a second finger start a page zoom / pinch gesture during play
+    for (const g of ['gesturestart', 'gesturechange', 'gestureend']) window.addEventListener(g, this.prevent as EventListener, { passive: false });
+    document.documentElement.classList.add('playing');
   }
 
   detach() {
@@ -90,6 +93,8 @@ export class InputManager {
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchcancel', this.onTouchEnd);
     this.el.removeEventListener('contextmenu', this.prevent);
+    for (const g of ['gesturestart', 'gesturechange', 'gestureend']) window.removeEventListener(g, this.prevent as EventListener);
+    document.documentElement.classList.remove('playing');
   }
 
   private prevent = (e: Event) => {
@@ -173,12 +178,36 @@ export class InputManager {
    * some mobile WebKit views). Mouse and pen use pointer events.
    */
   private onTouchStart = (e: TouchEvent) => {
-    if ((e.target as HTMLElement)?.closest?.('button, input, .no-game-input')) return;
+    if ((e.target as HTMLElement)?.closest?.('button, input, .no-game-input')) { this.reconcile(e); return; }
     if (e.cancelable) e.preventDefault();
     if (!this.enabled || !this.settings.touchControls) return;
     const t = ts(e);
-    for (const tc of Array.from(e.changedTouches)) this.contactDown('t' + tc.identifier, tc.clientX, tc.clientY, t, 'touch');
+    for (const tc of Array.from(e.changedTouches)) {
+      if (!this.pointers.has('t' + tc.identifier)) this.contactDown('t' + tc.identifier, tc.clientX, tc.clientY, t, 'touch');
+    }
+    this.reconcile(e);
   };
+  /** Is this touch on the playfield (not on a button / overlay)? */
+  private onField(tc: Touch) {
+    const el = tc.target as Element | null;
+    return !!el && this.el.contains(el) && !el.closest?.('button, input, .no-game-input');
+  }
+  /**
+   * Some mobile browsers occasionally drop or merge individual touch events when several fingers
+   * are down. Every touch event carries the full list of fingers on the screen, so resync with it:
+   * a finger we never saw start is treated as a new press, a finger that vanished as a release.
+   */
+  private reconcile(e: TouchEvent) {
+    if (!this.enabled || !this.settings.touchControls) return;
+    const t = ts(e);
+    const live = new Set<string>();
+    for (const tc of Array.from(e.touches)) {
+      const id = 't' + tc.identifier;
+      live.add(id);
+      if (!this.pointers.has(id) && this.onField(tc)) this.contactDown(id, tc.clientX, tc.clientY, t, 'touch');
+    }
+    for (const id of [...this.pointers.keys()]) if (id.startsWith('t') && !live.has(id)) this.contactUp(id, t);
+  }
   private onTouchMove = (e: TouchEvent) => {
     let ours = false;
     const t = ts(e);
@@ -189,6 +218,7 @@ export class InputManager {
       this.contactMove(id, tc.clientX, tc.clientY, t);
     }
     if (ours && e.cancelable) e.preventDefault();
+    this.reconcile(e);
   };
   private onTouchEnd = (e: TouchEvent) => {
     const t = ts(e);
@@ -200,6 +230,7 @@ export class InputManager {
       this.contactUp(id, t);
     }
     if (ours && e.cancelable) e.preventDefault();
+    this.reconcile(e);
   };
 
   private onPointerDown = (e: PointerEvent) => {

@@ -46,7 +46,12 @@ export class BoardRenderer {
     this.setSpeed(opts.noteSpeed);
   }
 
-  setSpeed(speed: number) { this.vis = 2.3 / (0.5 + speed * 0.15); }
+  setSpeed(speed: number) {
+    // time on screen scales with the beat length, so tiles move at the speed of the song
+    const base = 2.3 / (0.5 + speed * 0.15);
+    const beat = 60 / (this.opts?.bpm || 110);
+    this.vis = base * Math.max(0.72, Math.min(1.45, beat / 0.545));
+  }
   setOptions(o: Partial<RenderOptions>) { this.opts = { ...this.opts, ...o }; this.setSpeed(this.opts.noteSpeed); }
 
   private get accent() { return glowColor(this.opts.theme); }
@@ -256,7 +261,8 @@ export class BoardRenderer {
       const z = this.zOf(beats[bi] - s.t);
       if (z > 1) break;
       const bar = (bi - s.downbeatPhase) % 4 === 0;
-      g.strokeStyle = bar ? 'rgba(90,96,108,0.28)' : 'rgba(90,96,108,0.12)';
+      g.strokeStyle = bar ? 'rgba(70,76,88,0.55)' : 'rgba(80,86,98,0.26)';
+      g.lineWidth = (bar ? 3 : 1.5) * this.scaleAt(z);
       const y = this.yAt(z);
       g.beginPath(); g.moveTo(this.xAt(-1, z), y); g.lineTo(this.xAt(1, z), y); g.stroke();
     }
@@ -305,7 +311,7 @@ export class BoardRenderer {
     g.textBaseline = 'middle';
     const label = 'P E R F E C T';
     const lw = g.measureText(label).width + this.laneW * 0.12;
-    g.fillStyle = 'rgba(120,128,140,0.55)';
+    g.fillStyle = s.beatPulse > 0.05 ? rgba(darken(this.accent, 0.25), 0.4 + 0.6 * Math.min(1, s.beatPulse)) : 'rgba(120,128,140,0.55)';
     g.fillRect(x0 + 10, this.hitY - 1, this.cx - lw / 2 - x0 - 10, 2);
     g.fillRect(this.cx + lw / 2, this.hitY - 1, x1 - 10 - this.cx - lw / 2, 2);
     g.fillStyle = 'rgba(110,118,130,0.8)';

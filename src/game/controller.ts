@@ -165,6 +165,7 @@ export class GameController {
       laneColors: colors.lanes, swipeColor: colors.swipe, accent: colors.accent, skin: s.noteSkin, noteSpeed: s.noteSpeed,
       reducedMotion: s.reducedMotion, shake: s.screenShake, particleScale: s.particles, highContrast: s.colorMode === 'highContrast',
       perspective: s.playfield === '3d',
+      bpm: this.cfg.chart.analysis.bpm,
     };
   }
   private makeRenderer(s: Settings): Renderer | BoardRenderer {

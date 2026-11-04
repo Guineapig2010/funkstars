@@ -52,6 +52,8 @@ export interface RenderOptions {
   highContrast: boolean;
   /** true = 3D road with perspective; false = flat board with big tiles. */
   perspective: boolean;
+  /** Song tempo: the board scrolls in step with it (one beat = the same distance in every song). */
+  bpm?: number;
 }
 
 const JCOLORS: Record<Judgment, [string, string]> = {
